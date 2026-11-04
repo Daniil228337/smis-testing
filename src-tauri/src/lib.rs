@@ -1,11 +1,12 @@
 use sqlx::SqlitePool;
-
+use tauri::Manager;
 use crate::commands::db::{check_db, get_db_info};
 use crate::commands::settings::{get_setting, set_setting};
 use crate::commands::user::{create_user, get_recent_users};
 use crate::db::{create_pool, run_migrations};
 use crate::commands::test::{get_all_tests, get_all_disciplines};
 use crate::commands::attempt::{start_attempt, save_answer, finish_attempt, get_attempt_result};
+use crate::commands::admin::{init_admin_password, verify_admin_password};
 
 
 mod commands;
@@ -51,10 +52,25 @@ pub fn run() {
         });
 
     log::info!("🔧 Запуск Tauri приложения...");
-
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(AppState { db: db_pool })
+        // 👇 ДОБАВИТЬ ЭТОТ БЛОК:
+        .setup(|app| {
+            let state = app.state::<AppState>();
+            let pool = state.db.clone();
+            
+            // Вызываем init_admin_password в async-контексте
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = crate::commands::admin::init_admin_password_internal(&pool).await {
+                    log::error!("❌ Ошибка инициализации пароля администратора: {}", e);
+                } else {
+                    log::info!("✅ Пароль администратора готов");
+                }
+            });
+            
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             check_db,
             get_db_info,
@@ -68,6 +84,8 @@ pub fn run() {
             save_answer,
             finish_attempt,
             get_attempt_result,
+            init_admin_password,
+            verify_admin_password,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

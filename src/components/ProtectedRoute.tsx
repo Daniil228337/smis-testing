@@ -13,15 +13,25 @@ export default function ProtectedRoute({
   const { currentUser, isAdmin } = useAuthStore();
   const location = useLocation();
 
-  // Если требуется авторизация студента и пользователь не залогинен
+  // 1. Если это админ — пропускаем на любые страницы (даже если currentUser === null)
+  if (isAdmin) {
+    // Но если требуется админ-доступ, а пользователь не админ — редирект
+    if (requireAdmin && !isAdmin) {
+      return <Navigate to="/editor-login" state={{ from: location }} replace />;
+    }
+    return <>{children}</>;
+  }
+
+  // 2. Если это обычный студент, но он не залогинен — редирект на вход
   if (!currentUser) {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  // Если требуется админ-доступ и пользователь не админ
+  // 3. Если требуется админ-доступ, но пользователь не админ — редирект
   if (requireAdmin && !isAdmin) {
     return <Navigate to="/editor-login" state={{ from: location }} replace />;
   }
 
+  // 4. Всё ок — рендерим контент
   return <>{children}</>;
 }

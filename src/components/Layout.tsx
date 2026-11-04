@@ -6,6 +6,7 @@ import {
   LogOut,
   User,
   PenTool,
+  Shield, // ← Добавлено: иконка щита для админа
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,8 +39,8 @@ export default function Layout() {
           <p className="text-xs text-muted-foreground">Кафедра СМИС БНТУ</p>
         </div>
 
-        {/* Информация о пользователе */}
-        {currentUser && (
+        {/* Информация о пользователе или админе */}
+        {currentUser ? (
           <Card className="mb-4">
             <CardContent className="p-3 flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -55,7 +56,21 @@ export default function Layout() {
               </div>
             </CardContent>
           </Card>
-        )}
+        ) : isAdmin ? (
+          <Card className="mb-4 border-primary/20 bg-primary/5">
+            <CardContent className="p-3 flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
+                <Shield className="h-4 w-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-primary">Администратор</p>
+                <p className="text-xs text-muted-foreground">
+                  Режим редактирования
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
 
         {/* Навигация */}
         <nav className="flex-1 space-y-1">
@@ -84,11 +99,7 @@ export default function Layout() {
         </nav>
 
         {/* Кнопка выхода */}
-        <Button
-          variant="outline"
-          className="mt-4"
-          onClick={handleLogout}
-        >
+        <Button variant="outline" className="mt-4" onClick={handleLogout}>
           <LogOut className="h-4 w-4 mr-2" />
           Завершить сеанс
         </Button>
