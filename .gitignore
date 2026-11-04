@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Служебные файлы для ИИ-контекста
+project-context.txt
+update-context.ps1
+
+# Локальная база данных
+*.db
+*.db-shm
+*.db-wal
