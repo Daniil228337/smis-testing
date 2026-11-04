@@ -2,23 +2,22 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
+import { fileURLToPath } from "url";
 
-import process from "node:process";
+// Безопасный аналог __dirname для ES-модулей
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const host = process.env.TAURI_DEV_HOST;
 
-// https://vite.dev/config/
 export default defineConfig(() => ({
   plugins: [react(), tailwindcss()],
 
-  // Настройка алиасов должна быть ЗДЕСЬ, на верхнем уровне
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
 
-  // Vite options tailored for Tauri development
   clearScreen: false,
   server: {
     port: 1420,

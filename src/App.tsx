@@ -1,6 +1,7 @@
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "@/components/Layout"; 
-import ProtectedRoute from "@/components/ProtectedRoute";
+//import ProtectedRoute from "@/components/ProtectedRoute";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 // Страницы
 import LoginPage from "@/pages/LoginPage";

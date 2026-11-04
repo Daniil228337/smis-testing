@@ -5,6 +5,8 @@ use crate::commands::settings::{get_setting, set_setting};
 use crate::commands::user::{create_user, get_recent_users};
 use crate::db::{create_pool, run_migrations};
 use crate::commands::test::{get_all_tests, get_all_disciplines};
+use crate::commands::attempt::{start_attempt, save_answer, finish_attempt, get_attempt_result};
+
 
 mod commands;
 mod db;
@@ -62,6 +64,10 @@ pub fn run() {
             set_setting,
             get_all_tests,
             get_all_disciplines,
+            start_attempt,
+            save_answer,
+            finish_attempt,
+            get_attempt_result,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
