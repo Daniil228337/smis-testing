@@ -7,6 +7,9 @@ use crate::db::{create_pool, run_migrations};
 use crate::commands::test::{get_all_tests, get_all_disciplines};
 use crate::commands::attempt::{start_attempt, save_answer, finish_attempt, get_attempt_result};
 use crate::commands::admin::{init_admin_password, verify_admin_password};
+use crate::commands::editor::{
+    get_all_tests_for_editor, create_test, update_test, delete_test, duplicate_test,
+};
 
 
 mod commands;
@@ -86,6 +89,11 @@ pub fn run() {
             get_attempt_result,
             init_admin_password,
             verify_admin_password,
+            get_all_tests_for_editor,  
+            create_test,               
+            update_test,             
+            delete_test,              
+            duplicate_test, 
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

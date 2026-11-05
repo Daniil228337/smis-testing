@@ -4,3 +4,4 @@ pub mod user;
 pub mod test;
 pub mod attempt;
 pub mod admin;
+pub mod editor;
