@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import ClearHistory from "@/components/analytics/ClearHistory";
 import AttemptDetailsModal from "@/components/analytics/AttemptDetailsModal";
 
 interface AttemptSummary {
@@ -104,6 +105,7 @@ export default function AnalyticsPage() {
             Обзор результатов тестирования студентов
           </p>
         </div>
+        <ClearHistory onClearComplete={loadAttempts} />
       </div>
 
       {/* Панель фильтров */}

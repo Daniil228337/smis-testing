@@ -223,3 +223,29 @@ pub async fn get_attempt_details(
         questions,
     })
 }
+
+/// Очистить всю историю попыток (но НЕ удалять тесты и вопросы)
+#[tauri::command]
+pub async fn clear_all_attempts(
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    // Используем транзакцию для атомарности
+    let mut tx = state.db.begin().await.map_err(|e| e.to_string())?;
+
+    // 1. Удаляем все ответы в попытках
+    sqlx::query("DELETE FROM attempt_answers")
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // 2. Удаляем все попытки
+    sqlx::query("DELETE FROM attempts")
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    log::info!("🗑️ История попыток полностью очищена");
+    Ok(())
+}
