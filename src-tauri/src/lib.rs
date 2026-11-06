@@ -13,6 +13,7 @@ use crate::commands::question::{
     get_test_questions, create_question, update_question, delete_question, duplicate_question,
     upload_image, delete_image, reorder_questions,
 };
+use crate::commands::analytics::{get_all_attempts, get_attempt_details};
 use crate::commands::settings::{get_setting, set_setting, get_uploads_dir_path};
 use crate::commands::import::import_questions_from_excel;
 
@@ -108,7 +109,9 @@ pub fn run() {
             upload_image,
             delete_image,
             reorder_questions,
-            import_questions_from_excel, 
+            import_questions_from_excel,
+            get_all_attempts,
+            get_attempt_details, 
             get_uploads_dir_path,
         ])
         .run(tauri::generate_context!())
