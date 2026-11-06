@@ -1,4 +1,5 @@
 use tauri::State;
+use crate::utils::paths::get_uploads_dir;
 
 use crate::AppState;
 
@@ -16,6 +17,12 @@ pub async fn get_setting(
             .map_err(|e| e.to_string())?;
 
     Ok(row.map(|(value,)| value))
+}
+
+/// Возвращает абсолютный путь к папке uploads для корректной работы convertFileSrc на фронтенде
+#[tauri::command]
+pub fn get_uploads_dir_path() -> String {
+    get_uploads_dir().to_string_lossy().into_owned()
 }
 
 /// Сохраняет настройку (создаёт или обновляет — UPSERT).

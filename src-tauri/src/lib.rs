@@ -1,7 +1,6 @@
 use sqlx::SqlitePool;
 use tauri::Manager;
 use crate::commands::db::{check_db, get_db_info};
-use crate::commands::settings::{get_setting, set_setting};
 use crate::commands::user::{create_user, get_recent_users};
 use crate::db::{create_pool, run_migrations};
 use crate::commands::test::{get_all_tests, get_all_disciplines};
@@ -10,6 +9,11 @@ use crate::commands::admin::{init_admin_password, verify_admin_password};
 use crate::commands::editor::{
     get_all_tests_for_editor, create_test, update_test, delete_test, duplicate_test,
 };
+use crate::commands::question::{
+    get_test_questions, create_question, update_question, delete_question, duplicate_question,
+    upload_image, delete_image, reorder_questions,
+};
+use crate::commands::settings::{get_setting, set_setting, get_uploads_dir_path};
 
 
 mod commands;
@@ -94,6 +98,15 @@ pub fn run() {
             update_test,             
             delete_test,              
             duplicate_test, 
+            get_test_questions,
+            create_question,
+            update_question,
+            delete_question,
+            duplicate_question,
+            upload_image,
+            delete_image,
+            reorder_questions,
+            get_uploads_dir_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

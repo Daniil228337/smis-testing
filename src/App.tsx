@@ -13,6 +13,7 @@ import EditorPage from "@/pages/EditorPage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
 import SettingsPage from "@/pages/SettingsPage";
 import ThemeProvider from "@/components/ThemeProvider";
+import EditorTestPage from "@/pages/EditorTestPage";
 
 function App() {
   return (
@@ -46,6 +47,11 @@ function App() {
             }
           >
             <Route path="/editor" element={<EditorPage />} />
+            <Route path="/editor/test/:testId" element={
+              <ProtectedRoute requireAdmin>
+                <EditorTestPage />
+              </ProtectedRoute>
+            } />
             <Route path="/analytics" element={<AnalyticsPage />} />
           </Route>
 

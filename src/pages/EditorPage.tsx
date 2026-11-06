@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { 
   Plus, 
   Edit2, 
   Trash2, 
-  Copy, 
+  Copy,
+  FileText, 
   Loader2,
   AlertCircle
 } from "lucide-react";
@@ -40,6 +42,7 @@ import type { EditorTest, CreateTestPayload, UpdateTestPayload } from "@/types/e
 import type { Discipline } from "@/types/test";
 
 export default function EditorPage() {
+  const navigate = useNavigate();
   const [tests, setTests] = useState<EditorTest[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [loading, setLoading] = useState(true);
@@ -262,11 +265,23 @@ export default function EditorPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        {/* ← НОВАЯ КНОПКА: Редактировать вопросы */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => navigate(`/editor/test/${test.id}`)}
+                          disabled={submitting}
+                          title="Редактировать вопросы"
+                        >
+                          <FileText className="h-4 w-4" />
+                        </Button>
+
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleEdit(test)}
                           disabled={submitting}
+                          title="Редактировать тест"
                         >
                           <Edit2 className="h-4 w-4" />
                         </Button>
@@ -275,6 +290,7 @@ export default function EditorPage() {
                           size="icon"
                           onClick={() => handleDuplicate(test.id)}
                           disabled={submitting}
+                          title="Дублировать тест"
                         >
                           <Copy className="h-4 w-4" />
                         </Button>
@@ -284,6 +300,7 @@ export default function EditorPage() {
                           onClick={() => setDeleteConfirm(test.id)}
                           disabled={submitting}
                           className="text-destructive hover:text-destructive"
+                          title="Удалить тест"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

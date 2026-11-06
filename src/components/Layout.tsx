@@ -12,10 +12,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/lib/utils";
+import { useEffect } from "react";
+import { useAppStore } from "@/store/appStore";
 
 export default function Layout() {
   const { currentUser, isAdmin, logout } = useAuthStore();
+  const initPaths = useAppStore((s) => s.initPaths);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    initPaths();
+  }, [initPaths]);
 
   const handleLogout = () => {
     logout();

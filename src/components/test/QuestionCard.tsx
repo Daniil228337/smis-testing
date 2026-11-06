@@ -1,5 +1,7 @@
 import AnswerOption from './AnswerOption';
 import type { AttemptQuestion } from '@/types/attempt';
+import { getAssetUrl } from "@/lib/utils";
+import { useAppStore } from "@/store/appStore";
 
 interface QuestionCardProps {
   question: AttemptQuestion;
@@ -18,6 +20,7 @@ export default function QuestionCard({
     'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
     'bg-red-500/10 text-red-600 border-red-500/20',
   ];
+  const uploadsDir = useAppStore((s) => s.uploadsDir);
 
   return (
     <div className="space-y-6">
@@ -37,11 +40,14 @@ export default function QuestionCard({
         </div>
 
         {/* Картинка вопроса (если есть) */}
-        {question.imagePath && (
+        {question.imagePath && uploadsDir && (
           <img
-            src={question.imagePath}
+            src={getAssetUrl(question.imagePath, uploadsDir) || ''}
             alt="Иллюстрация к вопросу"
             className="max-h-64 w-auto rounded-lg border border-border object-contain"
+            onError={(e) => {
+              console.error('Ошибка загрузки картинки:', question.imagePath, 'Путь к uploads:', uploadsDir);
+            }}
           />
         )}
       </div>
