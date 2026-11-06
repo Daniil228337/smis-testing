@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import type { QuestionDetail, AnswerPayload, CreateQuestionPayload, UpdateQuestionPayload } from "@/types/question";
 import ImageUpload from "@/components/editor/ImageUpload";
+import ImportExcel from "@/components/editor/ImportExcel";
 import QuestionList from "@/components/editor/QuestionList";
 import { getAssetUrl } from "@/lib/utils";
 import { useAppStore } from "@/store/appStore";
@@ -260,7 +261,6 @@ export default function EditorTestPage() {
         )}
 
         {/* Список вопросов */}
-        {/* Список вопросов */}
         {questions.length === 0 ? (
         <Card>
             <CardContent className="p-12 text-center">
@@ -271,16 +271,22 @@ export default function EditorTestPage() {
             </CardContent>
         </Card>
         ) : (
-        <QuestionList
-            questions={questions}
-            testId={parseInt(testId!)}
-            onReordered={(newOrder) => setQuestions(newOrder)}
-            onEdit={handleEdit}
-            onDelete={(id) => setDeleteConfirm(id)}
-            onDuplicate={handleDuplicate}
-            submitting={submitting}
-        />
+            <QuestionList
+                questions={questions}
+                testId={parseInt(testId!)}
+                onReordered={(newOrder) => setQuestions(newOrder)}
+                onEdit={handleEdit}
+                onDelete={(id) => setDeleteConfirm(id)}
+                onDuplicate={handleDuplicate}
+                submitting={submitting}
+            />
         )}
+        
+        {/* Импорт из Excel */}
+        <ImportExcel
+            testId={parseInt(testId!)}
+            onImportComplete={loadQuestions}
+        />
 
         {/* Диалог создания/редактирования */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

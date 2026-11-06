@@ -14,6 +14,7 @@ use crate::commands::question::{
     upload_image, delete_image, reorder_questions,
 };
 use crate::commands::settings::{get_setting, set_setting, get_uploads_dir_path};
+use crate::commands::import::import_questions_from_excel;
 
 
 mod commands;
@@ -61,6 +62,7 @@ pub fn run() {
     log::info!("🔧 Запуск Tauri приложения...");
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState { db: db_pool })
         // 👇 ДОБАВИТЬ ЭТОТ БЛОК:
         .setup(|app| {
@@ -106,6 +108,7 @@ pub fn run() {
             upload_image,
             delete_image,
             reorder_questions,
+            import_questions_from_excel, 
             get_uploads_dir_path,
         ])
         .run(tauri::generate_context!())
