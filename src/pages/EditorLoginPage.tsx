@@ -74,27 +74,25 @@ export default function EditorLoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   autoFocus
                   disabled={loading}
-                  className="pr-10" // ← отступ справа, чтобы текст не залезал на иконку
+                  className="pr-10" // отступ справа, чтобы текст не залезал на иконку
                 />
-                {/* Кнопка-глазик — ВСЕГДА рендерится, не зависит от error */}
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  tabIndex={-1} // ← чтобы не перехватывал фокус при Tab
-                  className={cn(
-                    "absolute right-2.5 top-1/2 -translate-y-1/2",
-                    "flex h-7 w-7 items-center justify-center",
-                    "rounded-md text-muted-foreground hover:text-foreground",
-                    "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  )}
-                  aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
+                
+                {/* Глазик отображается ТОЛЬКО если в поле что-то введено */}
+                {password.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    tabIndex={-1} // чтобы не перехватывал фокус при навигации Tab
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                )}
               </div>
             </div>
 

@@ -43,32 +43,27 @@ pub async fn get_all_attempts(
         WHERE 1=1
     "#);
 
-    let mut args = SqliteArguments::default();
-    let mut param_index = 1;
+    let mut args = SqliteArguments::default();  
 
     // Добавляем фильтры
-    if let Some(test_id) = filter.test_id {
-        sql.push_str(&format!(" AND a.test_id = ?{}", param_index));
-        args.add(test_id); // <-- УБРАЛИ .map_err()
-        param_index += 1;
+        if let Some(test_id) = filter.test_id {
+        sql.push_str(" AND a.test_id = ?");
+        args.add(test_id);
     }
 
     if let Some(ref group_name) = filter.group_name {
-        sql.push_str(&format!(" AND u.group_name = ?{}", param_index));
-        args.add(group_name.clone()); // <-- УБРАЛИ .map_err()
-        param_index += 1;
+        sql.push_str(" AND u.group_name = ?");
+        args.add(group_name.clone());
     }
 
     if let Some(ref date_from) = filter.date_from {
-        sql.push_str(&format!(" AND DATE(a.started_at) >= DATE(?{})", param_index));
-        args.add(date_from.clone()); // <-- УБРАЛИ .map_err()
-        param_index += 1;
+        sql.push_str(" AND DATE(a.started_at) >= DATE(?)");
+        args.add(date_from.clone());
     }
 
     if let Some(ref date_to) = filter.date_to {
-        sql.push_str(&format!(" AND DATE(a.started_at) <= DATE(?{})", param_index));
-        args.add(date_to.clone()); // <-- УБРАЛИ .map_err()
-        param_index += 1;
+        sql.push_str(" AND DATE(a.started_at) <= DATE(?)");
+        args.add(date_to.clone());
     }
 
     // Добавляем сортировку

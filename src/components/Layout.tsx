@@ -14,11 +14,14 @@ import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/lib/utils";
 import { useEffect } from "react";
 import { useAppStore } from "@/store/appStore";
+import { useAppSettings } from "@/hooks/useAppSettings";
 
 export default function Layout() {
   const { currentUser, isAdmin, logout } = useAuthStore();
   const initPaths = useAppStore((s) => s.initPaths);
   const navigate = useNavigate();
+
+  useAppSettings();
 
   useEffect(() => {
     initPaths();

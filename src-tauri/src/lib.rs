@@ -5,7 +5,6 @@ use crate::commands::user::{create_user, get_recent_users};
 use crate::db::{create_pool, run_migrations};
 use crate::commands::test::{get_all_tests, get_all_disciplines};
 use crate::commands::attempt::{start_attempt, save_answer, finish_attempt, get_attempt_result};
-use crate::commands::admin::{init_admin_password, verify_admin_password};
 use crate::commands::editor::{
     get_all_tests_for_editor, create_test, update_test, delete_test, duplicate_test,
 };
@@ -14,9 +13,9 @@ use crate::commands::question::{
     upload_image, delete_image, reorder_questions,
 };
 use crate::commands::analytics::{get_all_attempts, get_attempt_details, clear_all_attempts};
-use crate::commands::settings::{get_setting, set_setting, get_uploads_dir_path};
 use crate::commands::import::import_questions_from_excel;
-
+use crate::commands::settings::{get_setting, set_setting, get_all_settings, update_settings, get_uploads_dir_path};
+use crate::commands::admin::{init_admin_password, verify_admin_password, change_admin_password};
 
 mod commands;
 mod db;
@@ -89,6 +88,8 @@ pub fn run() {
             get_setting,
             set_setting,
             get_all_tests,
+            get_all_settings,
+            update_settings,
             get_all_disciplines,
             start_attempt,
             save_answer,
@@ -96,6 +97,7 @@ pub fn run() {
             get_attempt_result,
             init_admin_password,
             verify_admin_password,
+            change_admin_password,
             get_all_tests_for_editor,  
             create_test,               
             update_test,             
@@ -112,7 +114,7 @@ pub fn run() {
             import_questions_from_excel,
             get_all_attempts,
             get_attempt_details,
-            clear_all_attempts, 
+            clear_all_attempts,
             get_uploads_dir_path,
         ])
         .run(tauri::generate_context!())
