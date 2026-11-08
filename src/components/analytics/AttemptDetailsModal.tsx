@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAssetUrl } from "@/lib/utils";
 import { useAppStore } from "@/store/appStore";
+import { ExportAttemptPdf } from "@/components/analytics/ExportPdf";
 
 interface AttemptDetails {
   id: number;
@@ -92,6 +93,12 @@ export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetai
             )}
           </DialogTitle>
         </DialogHeader>
+
+        {details && (
+          <div className="flex justify-end">
+            <ExportAttemptPdf details={details} />
+          </div>
+        )}
 
         {loading && (
           <div className="flex items-center justify-center py-8">

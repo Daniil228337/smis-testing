@@ -4,6 +4,7 @@ import { Search, Filter, Eye, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import ExportAttemptsPdf from "@/components/analytics/ExportPdf";
 import {
   Table,
   TableBody,
@@ -110,6 +111,7 @@ export default function AnalyticsPage() {
         <div className="flex flex-col items-end gap-3">
           <div className="flex gap-2">
             <ExportAttempts attempts={attempts} />
+            <ExportAttemptsPdf attempts={attempts} />
             <ClearHistory onClearComplete={loadAttempts} />
           </div>
         </div>
