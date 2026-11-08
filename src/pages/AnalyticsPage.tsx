@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import ClearHistory from "@/components/analytics/ClearHistory";
+import ExportAttempts from "@/components/analytics/ExportAttempts";
 import AttemptDetailsModal from "@/components/analytics/AttemptDetailsModal";
 
 interface AttemptSummary {
@@ -98,14 +99,20 @@ export default function AnalyticsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Аналитика</h1>
           <p className="text-muted-foreground mt-1">
             Обзор результатов тестирования студентов
           </p>
         </div>
-        <ClearHistory onClearComplete={loadAttempts} />
+
+        <div className="flex flex-col items-end gap-3">
+          <div className="flex gap-2">
+            <ExportAttempts attempts={attempts} />
+            <ClearHistory onClearComplete={loadAttempts} />
+          </div>
+        </div>
       </div>
 
       {/* Панель фильтров */}

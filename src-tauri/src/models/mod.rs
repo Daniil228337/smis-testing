@@ -5,7 +5,8 @@ pub mod editor;
 pub mod question;
 pub mod import;      
 pub mod analytics;
-pub mod settings;  
+pub mod settings;
+pub mod export;
 
 pub use user::*;
 pub use test::*;
@@ -15,3 +16,4 @@ pub use question::*;
 pub use import::*;  
 pub use analytics::*;
 pub use settings::*;
+pub use export::*;
