@@ -10,6 +10,8 @@ import {
   type AttemptDetailsPdf,
 } from "@/lib/pdf";
 import { useAppStore } from "@/store/appStore";
+import { useTranslation } from "react-i18next";
+
 
 interface ExportAttemptsPdfProps {
   attempts: AttemptSummaryPdf[];
@@ -21,6 +23,7 @@ interface ExportFileResult {
 }
 
 export default function ExportAttemptsPdf({ attempts }: ExportAttemptsPdfProps) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [savedPath, setSavedPath] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -57,14 +60,14 @@ export default function ExportAttemptsPdf({ attempts }: ExportAttemptsPdfProps) 
         ) : (
           <FileText className="mr-2 h-4 w-4" />
         )}
-        Экспорт PDF
+        {t('analytics.export.pdf')}
       </Button>
 
       {savedPath && (
         <Alert className="border-green-500/50 bg-green-500/10">
           <CheckCircle2 className="h-4 w-4" />
           <AlertDescription>
-            <p className="font-medium">PDF сохранён:</p>
+            <p className="font-medium">{t('analytics.export.pdfSaved')}</p>
             <p className="text-xs break-all">{savedPath}</p>
           </AlertDescription>
         </Alert>
@@ -84,6 +87,7 @@ interface ExportAttemptPdfProps {
 }
 
 export function ExportAttemptPdf({ details }: ExportAttemptPdfProps) {
+  const { t } = useTranslation();
   const uploadsDir = useAppStore((s) => s.uploadsDir);
 
   const [loading, setLoading] = useState(false);
@@ -128,7 +132,7 @@ export function ExportAttemptPdf({ details }: ExportAttemptPdfProps) {
         <Alert className="border-green-500/50 bg-green-500/10">
           <CheckCircle2 className="h-4 w-4" />
           <AlertDescription>
-            <p className="font-medium">PDF сохранён:</p>
+            <p className="font-medium">{t('analytics.export.pdfSaved')}</p>
             <p className="text-xs break-all">{savedPath}</p>
           </AlertDescription>
         </Alert>

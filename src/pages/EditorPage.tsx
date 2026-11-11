@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
+import { useTranslation } from "react-i18next";
 import { 
   Plus, 
   Edit2, 
@@ -43,6 +44,7 @@ import type { Discipline } from "@/types/test";
 
 export default function EditorPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [tests, setTests] = useState<EditorTest[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,11 +116,11 @@ export default function EditorPage() {
 
   const handleSubmit = async () => {
     if (!formData.title.trim()) {
-      setError("Название теста не может быть пустым");
+      setError(t('editor.errors.titleEmpty'));
       return;
     }
     if (formData.disciplineId === 0) {
-      setError("Выберите дисциплину");
+      setError(t('editor.errors.disciplineEmpty'));
       return;
     }
 
@@ -182,10 +184,10 @@ export default function EditorPage() {
           <CardContent className="p-6">
             <div className="flex items-center gap-3 text-destructive">
               <AlertCircle className="h-5 w-5" />
-              <p>Ошибка загрузки: {error}</p>
+              <p>{t('common.error')}: {error}</p>
             </div>
             <Button className="mt-4" onClick={loadData}>
-              Повторить
+              {t('common.retry')}
             </Button>
           </CardContent>
         </Card>
@@ -198,14 +200,14 @@ export default function EditorPage() {
       {/* Заголовок */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Редактор тестов</h1>
+          <h1 className="text-3xl font-bold">{t('editor.title')}</h1>
           <p className="text-muted-foreground mt-1">
-            Управление тестами и вопросами
+            {t('editor.subtitle')}
           </p>
         </div>
         <Button onClick={handleCreate}>
           <Plus className="mr-2 h-4 w-4" />
-          Создать тест
+          {t('editor.createTest')}
         </Button>
       </div>
 
@@ -214,7 +216,7 @@ export default function EditorPage() {
         <Card className="border-destructive">
           <CardContent className="p-4 flex items-center gap-3 text-destructive">
             <AlertCircle className="h-5 w-5" />
-            <p>{error}</p>
+            <p>{t('common.error')}: {error}</p>
           </CardContent>
         </Card>
       )}
@@ -224,7 +226,7 @@ export default function EditorPage() {
         <Card>
           <CardContent className="p-12 text-center">
             <p className="text-muted-foreground">
-              Нет тестов. Создайте первый тест!
+              {t('editor.noTests')}
             </p>
           </CardContent>
         </Card>
@@ -234,12 +236,12 @@ export default function EditorPage() {
             <Table style={{ tableLayout: 'fixed' }}>
               <TableHeader>
                 <TableRow>
-                  <TableHead style={{ width: '35%' }}>Название</TableHead>
-                  <TableHead style={{ width: '20%' }}>Дисциплина</TableHead>
-                  <TableHead className="text-center" style={{ width: '10%' }}>Вопросов</TableHead>
-                  <TableHead className="text-center" style={{ width: '10%' }}>Время</TableHead>
-                  <TableHead className="text-center" style={{ width: '10%' }}>Shuffle</TableHead>
-                  <TableHead className="text-right" style={{ width: '15%' }}>Действия</TableHead>
+                  <TableHead style={{ width: '35%' }}>{t('editor.columns.title')}</TableHead>
+                  <TableHead style={{ width: '20%' }}>{t('editor.columns.discipline')}</TableHead>
+                  <TableHead className="text-center" style={{ width: '10%' }}>{t('editor.columns.questions')}</TableHead>
+                  <TableHead className="text-center" style={{ width: '10%' }}>{t('editor.columns.time')}</TableHead>
+                  <TableHead className="text-center" style={{ width: '10%' }}>{t('editor.columns.shuffle')}</TableHead>
+                  <TableHead className="text-right" style={{ width: '15%' }}>{t('editor.columns.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -255,23 +257,26 @@ export default function EditorPage() {
                       {test.totalQuestions}
                     </TableCell>
                     <TableCell className="text-center">
-                      {test.timeLimitMinutes ? `${test.timeLimitMinutes} мин` : "—"}
+                      {test.timeLimitMinutes ? `${test.timeLimitMinutes} ${t('tests.min')}` : "—"}
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex justify-center gap-1">
-                        {test.shuffleQuestions && <span title="Вопросы">🔀</span>}
-                        {test.shuffleAnswers && <span title="Ответы">🔀</span>}
+                        {test.shuffleQuestions && (
+                          <span title={t('tests.shuffleQuestions')}>🔀</span>
+                        )}
+                        {test.shuffleAnswers && (
+                          <span title={t('tests.shuffleAnswers')}>🔀</span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        {/* ← НОВАЯ КНОПКА: Редактировать вопросы */}
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => navigate(`/editor/test/${test.id}`)}
                           disabled={submitting}
-                          title="Редактировать вопросы"
+                          title={t('editor.actions.editQuestions')}
                         >
                           <FileText className="h-4 w-4" />
                         </Button>
@@ -281,7 +286,7 @@ export default function EditorPage() {
                           size="icon"
                           onClick={() => handleEdit(test)}
                           disabled={submitting}
-                          title="Редактировать тест"
+                          title={t('editor.actions.editTest')}
                         >
                           <Edit2 className="h-4 w-4" />
                         </Button>
@@ -290,7 +295,7 @@ export default function EditorPage() {
                           size="icon"
                           onClick={() => handleDuplicate(test.id)}
                           disabled={submitting}
-                          title="Дублировать тест"
+                          title={t('editor.actions.duplicate')}
                         >
                           <Copy className="h-4 w-4" />
                         </Button>
@@ -300,7 +305,7 @@ export default function EditorPage() {
                           onClick={() => setDeleteConfirm(test.id)}
                           disabled={submitting}
                           className="text-destructive hover:text-destructive"
-                          title="Удалить тест"
+                          title={t('editor.actions.delete')}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -319,24 +324,24 @@ export default function EditorPage() {
         <DialogContent className="max-w-2xl w-[90vw] overflow-hidden">
           <DialogHeader>
             <DialogTitle>
-              {editingTest ? "Редактировать тест" : "Создать тест"}
+              {editingTest ? t('editor.editTestTitle') : t('editor.createTestTitle')}
             </DialogTitle>
             <DialogDescription>
               {editingTest
-                ? "Измените параметры теста"
-                : "Заполните информацию о новом тесте"}
+                ? t('editor.editTestSubtitle')
+                : t('editor.createTestSubtitle')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             {/* Название */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Название *</label>
+              <label className="text-sm font-medium">{t('editor.fields.title')} *</label>
               <div className="overflow-hidden">
                 <Input
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Введите название теста"
+                  placeholder={t('editor.fields.titlePlaceholder')}
                   className="w-full break-all"
                 />
               </div>
@@ -344,14 +349,14 @@ export default function EditorPage() {
 
             {/* Описание */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Описание</label>
+              <label className="text-sm font-medium">{t('editor.fields.description')}</label>
               <div className="overflow-hidden">
                 <Textarea
                   value={formData.description || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value || null })
                   }
-                  placeholder="Описание теста (необязательно)"
+                  placeholder={t('editor.fields.descriptionPlaceholder')}
                   rows={3}
                   className="w-full resize-none break-words"
                 />
@@ -360,7 +365,7 @@ export default function EditorPage() {
 
             {/* Дисциплина */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Дисциплина *</label>
+              <label className="text-sm font-medium">{t('editor.fields.discipline')} *</label>
               <Select
                 value={formData.disciplineId.toString()}
                 onValueChange={(v) =>
@@ -368,7 +373,7 @@ export default function EditorPage() {
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Выберите дисциплину" />
+                  <SelectValue placeholder={t('editor.fields.disciplinePlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {disciplines.map((d) => (
@@ -383,7 +388,7 @@ export default function EditorPage() {
 
             {/* Лимит времени */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Лимит времени (минуты)</label>
+              <label className="text-sm font-medium">{t('editor.fields.timeLimit')}</label>
               <Input
                 type="number"
                 min="1"
@@ -394,13 +399,13 @@ export default function EditorPage() {
                     timeLimitMinutes: e.target.value ? parseInt(e.target.value) : null,
                   })
                 }
-                placeholder="Оставьте пустым для безлимита"
+                placeholder={t('editor.fields.timeLimitPlaceholder')}
               />
             </div>
 
             {/* Количество вопросов */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Количество вопросов</label>
+              <label className="text-sm font-medium">{t('editor.fields.questionCount')}</label>
               <Input
                 type="number"
                 min="1"
@@ -411,7 +416,7 @@ export default function EditorPage() {
                     questionCount: e.target.value ? parseInt(e.target.value) : null,
                   })
                 }
-                placeholder="Оставьте пустым для всех вопросов"
+                placeholder={t('editor.fields.questionCountPlaceholder')}
               />
             </div>
 
@@ -426,7 +431,7 @@ export default function EditorPage() {
                   }
                 />
                 <label htmlFor="shuffleQuestions" className="text-sm">
-                  Перемешивать вопросы
+                  {t('editor.fields.shuffleQuestions')}
                 </label>
               </div>
 
@@ -439,7 +444,7 @@ export default function EditorPage() {
                   }
                 />
                 <label htmlFor="shuffleAnswers" className="text-sm">
-                  Перемешивать ответы
+                  {t('editor.fields.shuffleAnswers')}
                 </label>
               </div>
             </div>
@@ -451,18 +456,18 @@ export default function EditorPage() {
               onClick={() => setIsDialogOpen(false)}
               disabled={submitting}
             >
-              Отмена
+              {t('editor.buttons.cancel')}
             </Button>
             <Button onClick={handleSubmit} disabled={submitting}>
               {submitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Сохранение...
+                  {t('editor.buttons.saving')}
                 </>
               ) : editingTest ? (
-                "Сохранить"
+                t('editor.buttons.save')
               ) : (
-                "Создать"
+                t('editor.buttons.create')
               )}
             </Button>
           </DialogFooter>
@@ -473,9 +478,9 @@ export default function EditorPage() {
       <Dialog open={deleteConfirm !== null} onOpenChange={() => setDeleteConfirm(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Удалить тест?</DialogTitle>
+            <DialogTitle>{t('editor.deleteConfirm.title')}</DialogTitle>
             <DialogDescription>
-              Это действие нельзя отменить. Все связи с вопросами будут удалены.
+              {t('editor.deleteConfirm.description')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -484,7 +489,7 @@ export default function EditorPage() {
               onClick={() => setDeleteConfirm(null)}
               disabled={submitting}
             >
-              Отмена
+              {t('editor.buttons.cancel')}
             </Button>
             <Button
               variant="destructive"
@@ -494,10 +499,10 @@ export default function EditorPage() {
               {submitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Удаление...
+                  {t('editor.buttons.deleting')}
                 </>
               ) : (
-                "Удалить"
+                t('editor.buttons.delete')
               )}
             </Button>
           </DialogFooter>

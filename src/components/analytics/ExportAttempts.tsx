@@ -5,6 +5,7 @@ import { FileSpreadsheet, FileJson, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { save } from "@tauri-apps/plugin-dialog";
+import { useTranslation } from "react-i18next";
 
 interface AttemptSummaryForExport {
   id: number;
@@ -90,6 +91,7 @@ function buildJson(attempts: AttemptSummaryForExport[]): string {
 }
 
 export default function ExportAttempts({ attempts }: ExportAttemptsProps) {
+  const { t } = useTranslation();
   const [loadingFormat, setLoadingFormat] = useState<ExportFormat | null>(null);
   const [savedPath, setSavedPath] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -146,7 +148,7 @@ export default function ExportAttempts({ attempts }: ExportAttemptsProps) {
           ) : (
             <FileSpreadsheet className="mr-2 h-4 w-4" />
           )}
-          Экспорт CSV
+            {t('analytics.export.csv')}
         </Button>
 
         <Button
@@ -159,7 +161,7 @@ export default function ExportAttempts({ attempts }: ExportAttemptsProps) {
           ) : (
             <FileJson className="mr-2 h-4 w-4" />
           )}
-          Экспорт JSON
+            {t('analytics.export.json')}
         </Button>
       </div>
 
@@ -167,7 +169,7 @@ export default function ExportAttempts({ attempts }: ExportAttemptsProps) {
         <Alert className="border-green-500/50 bg-green-500/10">
           <CheckCircle2 className="h-4 w-4" />
           <AlertDescription>
-            <p className="font-medium">Файл сохранён:</p>
+            <p className="font-medium">{t('analytics.export.saved')}</p>
             <p className="text-xs break-all">{savedPath}</p>
           </AlertDescription>
         </Alert>

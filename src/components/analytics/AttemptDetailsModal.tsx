@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { X, CheckCircle2, XCircle, Clock, AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next"; // ← ДОБАВЛЕНО
 import {
   Dialog,
   DialogContent,
@@ -44,6 +45,7 @@ interface AttemptDetailsModalProps {
 }
 
 export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetailsModalProps) {
+  const { t } = useTranslation(); // ← ПЕРЕНЕСЕНО ВНУТРЬ КОМПОНЕНТА
   const [details, setDetails] = useState<AttemptDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +57,7 @@ export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetai
     setLoading(true);
     setError(null);
     setDetails(null);
-
+    
     invoke<AttemptDetails>("get_attempt_details", { attemptId })
       .then((data) => setDetails(data))
       .catch((e) => setError(String(e)))
@@ -66,8 +68,8 @@ export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetai
     if (!seconds) return "—";
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins} мин ${secs} сек`;
-    };
+    return `${mins} ${t('analytics.details.min')} ${secs} ${t('analytics.details.sec')}`;
+  };
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "—";
@@ -85,7 +87,7 @@ export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetai
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span>Детали попытки #{attemptId}</span>
+            <span>{t('analytics.details.title', { id: attemptId })}</span>
             {details && (
               <Badge variant={details.percentage >= 80 ? "default" : details.percentage >= 50 ? "secondary" : "destructive"}>
                 {details.percentage.toFixed(1)}%
@@ -93,7 +95,7 @@ export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetai
             )}
           </DialogTitle>
         </DialogHeader>
-
+        
         {details && (
           <div className="flex justify-end">
             <ExportAttemptPdf details={details} />
@@ -119,20 +121,20 @@ export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetai
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               <Card>
                 <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground">Студент</p>
+                  <p className="text-xs text-muted-foreground">{t('analytics.details.student')}</p>
                   <p className="font-semibold">{details.userName}</p>
                   <p className="text-sm text-muted-foreground">{details.groupName}</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground">Тест</p>
+                  <p className="text-xs text-muted-foreground">{t('analytics.details.test')}</p>
                   <p className="font-semibold line-clamp-2">{details.testTitle}</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground">Результат</p>
+                  <p className="text-xs text-muted-foreground">{t('analytics.details.result')}</p>
                   <p className="text-2xl font-bold">
                     {details.score ?? 0} / {details.maxScore ?? 0}
                   </p>
@@ -140,7 +142,7 @@ export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetai
               </Card>
               <Card>
                 <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground">Время</p>
+                  <p className="text-xs text-muted-foreground">{t('analytics.details.time')}</p>
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <p className="font-semibold">{formatDuration(details.durationSeconds)}</p>
@@ -154,7 +156,7 @@ export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetai
 
             {/* Разбор вопросов */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Разбор ответов</h3>
+              <h3 className="text-lg font-semibold">{t('analytics.details.review')}</h3>
               {details.questions.map((q, index) => (
                 <Card
                   key={q.questionId}
@@ -165,7 +167,7 @@ export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetai
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-sm font-medium text-muted-foreground">
-                            Вопрос {index + 1}
+                            {t('analytics.details.question')} {index + 1}
                           </span>
                           {q.isCorrect ? (
                             <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -174,13 +176,13 @@ export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetai
                           )}
                           {q.timeSpentSeconds !== null && (
                             <span className="ml-auto text-xs text-muted-foreground flex items-center gap-1">
-                              <Clock className="h-3 w-3" /> {q.timeSpentSeconds} сек
+                              <Clock className="h-3 w-3" /> {q.timeSpentSeconds} {t('analytics.details.sec')}
                             </span>
                           )}
                         </div>
                         <p className="font-medium">{q.questionText}</p>
                         
-                        {/* Картинка вопроса (используем getAssetUrl!) */}
+                        {/* Картинка вопроса */}
                         {q.questionImagePath && uploadsDir && (
                           <img
                             src={getAssetUrl(q.questionImagePath, uploadsDir) || ""}
@@ -193,20 +195,22 @@ export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetai
 
                     <div className="space-y-2 pl-2 border-l-2 border-muted">
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Ответ студента:</p>
+                        <p className="text-xs text-muted-foreground mb-1">{t('analytics.details.studentAnswer')}:</p>
                         <p className={q.isCorrect ? "text-green-700 font-medium" : "text-red-700"}>
-                          {q.userAnswerText || "Не отвечено"}
+                          {q.userAnswerText || t('analytics.details.notAnswered')}
                         </p>
                       </div>
+                      
                       {!q.isCorrect && (
                         <div>
-                          <p className="text-xs text-muted-foreground mb-1">Правильный ответ:</p>
+                          <p className="text-xs text-muted-foreground mb-1">{t('analytics.details.correctAnswer')}:</p>
                           <p className="text-green-700 font-medium">{q.correctAnswerText}</p>
                         </div>
                       )}
+                      
                       {q.explanation && (
                         <div className="pt-2 mt-2 border-t border-border">
-                          <p className="text-xs text-muted-foreground mb-1">💡 Пояснение:</p>
+                          <p className="text-xs text-muted-foreground mb-1">💡 {t('analytics.details.explanation')}:</p>
                           <p className="text-sm text-foreground/80">{q.explanation}</p>
                         </div>
                       )}

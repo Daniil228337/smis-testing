@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import ExportAttemptsPdf from "@/components/analytics/ExportPdf";
+import { useTranslation } from "react-i18next";
 import {
   Table,
   TableBody,
@@ -41,6 +42,7 @@ interface AttemptSummary {
 }
 
 export default function AnalyticsPage() {
+  const { t } = useTranslation();
   const [attempts, setAttempts] = useState<AttemptSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,9 +104,9 @@ export default function AnalyticsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Аналитика</h1>
+          <h1 className="text-3xl font-bold">{t('analytics.title')}</h1>
           <p className="text-muted-foreground mt-1">
-            Обзор результатов тестирования студентов
+            {t('analytics.subtitle')}
           </p>
         </div>
 
@@ -122,31 +124,31 @@ export default function AnalyticsPage() {
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-4 items-end">
             <div className="flex-1 space-y-2 w-full">
-              <label className="text-sm font-medium">Группа</label>
+              <label className="text-sm font-medium">{t('analytics.filters.group')}</label>
               <Input
-                placeholder="Например: ИС-23"
+                placeholder={t('analytics.filters.groupPlaceholder')}
                 value={filterGroupName}
                 onChange={(e) => setFilterGroupName(e.target.value)}
               />
             </div>
             <div className="space-y-2 w-full md:w-48">
-              <label className="text-sm font-medium">Дата от</label>
+              <label className="text-sm font-medium">{t('analytics.filters.dateFrom')}</label>
               <Input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} />
             </div>
             <div className="space-y-2 w-full md:w-48">
-              <label className="text-sm font-medium">Дата до</label>
+              <label className="text-sm font-medium">{t('analytics.filters.dateTo')}</label>
               <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} />
             </div>
             <div className="flex gap-2">
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Сортировка" />
+                  <SelectValue placeholder={t('analytics.filters.sortBy')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="date">По дате</SelectItem>
-                  <SelectItem value="percentage">По результату</SelectItem>
-                  <SelectItem value="user_name">По имени</SelectItem>
-                  <SelectItem value="test_title">По тесту</SelectItem>
+                  <SelectItem value="date">{t('analytics.filters.byDate')}</SelectItem>
+                  <SelectItem value="percentage">{t('analytics.filters.byResult')}</SelectItem>
+                  <SelectItem value="user_name">{t('analytics.filters.byName')}</SelectItem>
+                  <SelectItem value="test_title">{t('analytics.filters.byTest')}</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={sortOrder} onValueChange={setSortOrder}>
@@ -154,13 +156,13 @@ export default function AnalyticsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="desc">↓ Убыв.</SelectItem>
-                  <SelectItem value="asc">↑ Возр.</SelectItem>
+                  <SelectItem value="desc">{t('analytics.filters.desc')}</SelectItem>
+                  <SelectItem value="asc">{t('analytics.filters.asc')}</SelectItem>
                 </SelectContent>
               </Select>
               <Button onClick={loadAttempts} className="shrink-0">
                 <Filter className="mr-2 h-4 w-4" />
-                Применить
+                  {t('analytics.filters.apply')}
               </Button>
             </div>
           </div>
@@ -182,18 +184,18 @@ export default function AnalyticsPage() {
           ) : attempts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Search className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">Попыток не найдено</p>
+              <p className="text-muted-foreground">{t('analytics.noAttempts')}</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Студент / Группа</TableHead>
-                  <TableHead>Тест</TableHead>
-                  <TableHead className="text-center">Дата</TableHead>
-                  <TableHead className="text-center">Результат</TableHead>
-                  <TableHead className="text-center">Время</TableHead>
-                  <TableHead className="text-right">Действия</TableHead>
+                  <TableHead>{t('analytics.columns.student')}</TableHead>
+                  <TableHead>{t('analytics.columns.test')}</TableHead>
+                  <TableHead className="text-center">{t('analytics.columns.date')}</TableHead>
+                  <TableHead className="text-center">{t('analytics.columns.result')}</TableHead>
+                  <TableHead className="text-center">{t('analytics.columns.time')}</TableHead>
+                  <TableHead className="text-right">{t('analytics.columns.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -216,8 +218,8 @@ export default function AnalyticsPage() {
                     </TableCell>
                     <TableCell className="text-center text-sm">
                       {attempt.status === "completed" 
-                        ? `${Math.floor((attempt.durationSeconds || 0) / 60)} мин` 
-                        : "В процессе"}
+                        ? `${Math.floor((attempt.durationSeconds || 0) / 60)} ${t('analytics.min')}`
+                        : t('analytics.inProgress')}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setSelectedAttemptId(attempt.id); }}>
