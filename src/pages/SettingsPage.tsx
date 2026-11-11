@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useSettingsStore } from "@/store/settingsStore";
 
 interface AppSettings {
   theme: string;
@@ -83,8 +84,9 @@ export default function SettingsPage() {
     setMessage(null);
     try {
       await invoke('update_settings', { settings });
+      // ✅ Мгновенное применение — без перезагрузки страницы
+      useSettingsStore.getState().apply(settings);
       setMessage({ type: 'success', text: t('settings.messages.saved') });
-      window.location.reload();
     } catch (e) {
       setMessage({ type: 'error', text: String(e) });
     } finally {

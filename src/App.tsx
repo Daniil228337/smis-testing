@@ -14,8 +14,11 @@ import AnalyticsPage from "@/pages/AnalyticsPage";
 import SettingsPage from "@/pages/SettingsPage";
 import ThemeProvider from "@/components/ThemeProvider";
 import EditorTestPage from "@/pages/EditorTestPage";
+import { useAppSettings } from "@/hooks/useAppSettings";
 
 function App() {
+  useAppSettings();
+
   return (
     <ThemeProvider>
       <HashRouter>
