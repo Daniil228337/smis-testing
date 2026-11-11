@@ -1,6 +1,6 @@
 use std::fs;
 use uuid::Uuid;
-
+use std::path::PathBuf;
 use crate::models::ExportFileResult;
 use crate::utils::paths::get_exports_dir;
 
@@ -111,6 +111,65 @@ pub async fn save_pdf(
 
     Ok(ExportFileResult {
         file_path: full_path,
+        file_name,
+    })
+}
+
+/// Сохраняет файл по выбранному пользователем абсолютному пути
+/// (системный диалог «Сохранить как...»).
+/// Используется для экспорта CSV/JSON/PDF.
+#[tauri::command]
+pub async fn save_file_to_path(
+    path: String,
+    bytes: Vec<u8>,
+) -> Result<ExportFileResult, String> {
+    // 1. Путь обязан быть абсолютным (приходит из системного диалога)
+    let file_path = PathBuf::from(&path);
+    if !file_path.is_absolute() {
+        return Err("Путь должен быть абсолютным".to_string());
+    }
+
+    // 2. Разрешены только наши форматы — защита от перезаписи случайных файлов
+    let extension = file_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    match extension.as_str() {
+        "csv" | "json" => {
+            if bytes.is_empty() {
+                return Err("Нет данных для экспорта".to_string());
+            }
+        }
+        "pdf" => {
+            if bytes.len() < 4 || &bytes[0..4] != b"%PDF" {
+                return Err("Переданные данные не являются PDF-файлом".to_string());
+            }
+        }
+        _ => return Err("Разрешено сохранять только файлы .csv, .json, .pdf".to_string()),
+    }
+
+    // 3. Ограничение размера (50 MB)
+    if bytes.len() > 50 * 1024 * 1024 {
+        return Err("Файл слишком большой. Максимальный размер: 50 MB".to_string());
+    }
+
+    // 4. Создаём родительскую папку (если нужно) и пишем файл
+    if let Some(parent) = file_path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Ошибка создания папки: {}", e))?;
+    }
+    fs::write(&file_path, &bytes)
+        .map_err(|e| format!("Ошибка сохранения файла: {}", e))?;
+
+    let file_name = file_path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "export".to_string());
+
+    log::info!("✅ Файл сохранён по выбранному пути: {}", path);
+    Ok(ExportFileResult {
+        file_path: path,
         file_name,
     })
 }

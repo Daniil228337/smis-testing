@@ -2,6 +2,7 @@ import { jsPDF } from "jspdf";
 import { invoke } from "@tauri-apps/api/core";
 import { ROBOTO_BASE64 } from "@/fonts/roboto-base64";
 import { getAssetUrl } from "@/lib/utils";
+import { save } from "@tauri-apps/plugin-dialog";
 
 export interface AttemptSummaryPdf {
   id: number;
@@ -162,15 +163,24 @@ function addFooters(doc: jsPDF) {
 async function savePdfDocument(
   doc: jsPDF,
   filename: string
-): Promise<ExportFileResult> {
+): Promise<ExportFileResult | null> {
   addFooters(doc);
+
+  // Системный диалог «Сохранить как...»
+  const filePath = await save({
+    title: "Сохранение PDF",
+    filters: [{ name: "PDF файлы", extensions: ["pdf"] }],
+    defaultPath: filename,
+  });
+
+  // Пользователь отменил — не ошибка, просто не сохраняем
+  if (!filePath) return null;
 
   const arrayBuffer = doc.output("arraybuffer");
   const bytes = Array.from(new Uint8Array(arrayBuffer));
-
-  return invoke<ExportFileResult>("save_pdf", {
+  return invoke<ExportFileResult>("save_file_to_path", {
+    path: filePath,
     bytes,
-    filename,
   });
 }
 
@@ -290,7 +300,7 @@ async function writeImageFromRelativePath(
 
 export async function exportAttemptsSummaryPdf(
   attempts: AttemptSummaryPdf[]
-): Promise<ExportFileResult> {
+): Promise<ExportFileResult | null> {
   const ctx = createPdfContext();
   const date = new Date().toISOString().slice(0, 10);
 
@@ -364,7 +374,7 @@ export async function exportAttemptsSummaryPdf(
 export async function exportAttemptDetailsPdf(
   attempt: AttemptDetailsPdf,
   uploadsDir: string | null
-): Promise<ExportFileResult> {
+): Promise<ExportFileResult | null> {
   const ctx = createPdfContext();
   const date = new Date().toISOString().slice(0, 10);
 

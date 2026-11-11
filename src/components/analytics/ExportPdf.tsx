@@ -34,7 +34,10 @@ export default function ExportAttemptsPdf({ attempts }: ExportAttemptsPdfProps) 
 
     try {
       const result = await exportAttemptsSummaryPdf(attempts);
-      setSavedPath(result.filePath);
+      // ✅ ИЗМЕНЕНИЕ: проверяем, что result не null (пользователь не отменил диалог)
+      if (result) {
+        setSavedPath(result.filePath);
+      }
     } catch (e) {
       setError(String(e));
     } finally {
@@ -94,7 +97,10 @@ export function ExportAttemptPdf({ details }: ExportAttemptPdfProps) {
 
     try {
       const result = await exportAttemptDetailsPdf(details, uploadsDir);
-      setSavedPath(result.filePath);
+      // ✅ ИЗМЕНЕНИЕ: проверяем, что result не null (пользователь не отменил диалог)
+      if (result) {
+        setSavedPath(result.filePath);
+      }
     } catch (e) {
       setError(String(e));
     } finally {

@@ -4,6 +4,7 @@ import { FileSpreadsheet, FileJson, Loader2, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { save } from "@tauri-apps/plugin-dialog";
 
 interface AttemptSummaryForExport {
   id: number;
@@ -95,26 +96,35 @@ export default function ExportAttempts({ attempts }: ExportAttemptsProps) {
 
   const handleExport = async (format: ExportFormat) => {
     if (attempts.length === 0) return;
-
     setLoadingFormat(format);
     setError(null);
     setSavedPath(null);
-
     try {
       const date = new Date().toISOString().slice(0, 10);
-      const filename = `smis-attempts-${date}.${format}`;
-
+      const defaultName = `smis-attempts-${date}.${format}`;
       const content =
         format === "csv"
           ? buildCsv(attempts)
           : buildJson(attempts);
 
-      const result = await invoke<ExportFileResult>("save_export_file", {
-        filename,
-        content,
-        format,
+      // Системный диалог «Сохранить как...» — пользователь выбирает папку и имя
+      const filePath = await save({
+        title: format === "csv" ? "Сохранение CSV" : "Сохранение JSON",
+        filters:
+          format === "csv"
+            ? [{ name: "CSV файлы", extensions: ["csv"] }]
+            : [{ name: "JSON файлы", extensions: ["json"] }],
+        defaultPath: defaultName,
       });
 
+      // Пользователь отменил диалог — тихо выходим без ошибки
+      if (!filePath) return;
+
+      const bytes = Array.from(new TextEncoder().encode(content));
+      const result = await invoke<ExportFileResult>("save_file_to_path", {
+        path: filePath,
+        bytes,
+      });
       setSavedPath(result.filePath);
     } catch (e) {
       setError(String(e));

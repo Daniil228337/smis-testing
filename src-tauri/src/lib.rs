@@ -16,7 +16,7 @@ use crate::commands::analytics::{get_all_attempts, get_attempt_details, clear_al
 use crate::commands::import::import_questions_from_excel;
 use crate::commands::settings::{get_setting, set_setting, get_all_settings, update_settings, get_uploads_dir_path};
 use crate::commands::admin::{init_admin_password, verify_admin_password, change_admin_password};
-use crate::commands::export::{save_export_file, save_pdf};
+use crate::commands::export::{save_export_file, save_pdf, save_file_to_path};
 
 mod commands;
 mod db;
@@ -120,6 +120,7 @@ pub fn run() {
             get_uploads_dir_path,
             save_export_file,
             save_pdf,
+            save_file_to_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
