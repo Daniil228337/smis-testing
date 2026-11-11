@@ -165,7 +165,7 @@
     "subtitle": "Test #{{testId}} · {{count}} questions",
     "addQuestion": "Add question",
     "noQuestions": "No questions. Add your first question!",
-    "createTitle": "Add Question",
+    "createTitle": "Add Question",  
     "editTitle": "Edit Question",
     "createSubtitle": "Fill in the information about the new question",
     "editSubtitle": "Change the question text and answer options",
@@ -266,6 +266,7 @@
     "subtitle": "Manage appearance and security",
     "appearance": {
       "title": "Appearance",
+      "resetToDefaults":"Reset to factory defaults",
       "description": "Customize the color scheme and typography",
       "accentColor": "Accent color",
       "fontSize": "Font size",
@@ -311,7 +312,8 @@
     },
     "messages": {
       "saved": "Settings saved successfully!",
-      "passwordChanged": "Admin password changed successfully!"
+      "passwordChanged": "Admin password changed successfully!",
+      "resetToDefaultsSuccess":"Settings reset to factory defaults"
     }
   },
   "common": {

@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useSettingsStore } from "@/store/settingsStore";
+import { RotateCcw } from "lucide-react";
 
 interface AppSettings {
   theme: string;
@@ -87,6 +88,31 @@ export default function SettingsPage() {
       // ✅ Мгновенное применение — без перезагрузки страницы
       useSettingsStore.getState().apply(settings);
       setMessage({ type: 'success', text: t('settings.messages.saved') });
+    } catch (e) {
+      setMessage({ type: 'error', text: String(e) });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleResetToDefaults = async () => {
+    setSaving(true);
+    setMessage(null);
+    
+    // Жёстко заданные заводские настройки (стандарты)
+    const factoryDefaults = {
+      theme: 'system',
+      accentColor: '#2563eb',
+      fontSize: 'large',
+      fontFamily: 'serif',
+    };
+
+    try {
+      // 1. Сохраняем в БД
+      await invoke('update_settings', { settings: factoryDefaults });
+      // 2. Мгновенно применяем к DOM без перезагрузки
+      useSettingsStore.getState().apply(factoryDefaults);
+      setMessage({ type: 'success', text: t('settings.messages.resetToDefaultsSuccess') });
     } catch (e) {
       setMessage({ type: 'error', text: String(e) });
     } finally {
@@ -261,6 +287,17 @@ export default function SettingsPage() {
               <Save className="mr-2 h-4 w-4" />
             )}
             {t('settings.appearance.save')}
+          </Button>
+
+          {/* ← НОВАЯ КНОПКА СБРОСА */}
+          <Button 
+            variant="outline" 
+            onClick={handleResetToDefaults} 
+            disabled={saving} 
+            className="w-full md:w-auto text-muted-foreground hover:text-foreground"
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            {t('settings.appearance.resetToDefaults')}
           </Button>
         </CardContent>
       </Card>

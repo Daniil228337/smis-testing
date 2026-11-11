@@ -14,9 +14,9 @@ impl Default for AppSettings {
     fn default() -> Self {
         Self {
             theme: "system".to_string(),
-            accent_color: "#3b82f6".to_string(), // blue-500
-            font_size: "medium".to_string(),
-            font_family: "system".to_string(),
+            accent_color: "#2563eb".to_string(), // Нейтральный высококонтрастный синий
+            font_size: "large".to_string(),      // 18px (читается с проектора)
+            font_family: "serif".to_string(),    // Times New Roman / с засечками
         }
     }
 }   

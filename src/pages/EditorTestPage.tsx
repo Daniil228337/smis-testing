@@ -90,7 +90,13 @@ export default function EditorTestPage() {
             imagePath: null,
             explanation: "",
             difficulty: 1,
-            answers: [{ text: "", isCorrect: true }, { text: "", isCorrect: false }],
+            answers: [
+                { text: "", isCorrect: true },  // ← 1-й вариант по умолчанию правильный
+                { text: "", isCorrect: false }, // ← 2-й
+                { text: "", isCorrect: false }, // ← 3-й
+                { text: "", isCorrect: false }, // ← 4-й
+                { text: "", isCorrect: false }, // ← 5-й (ЗАВОДСКОЙ СТАНДАРТ)
+            ],
         });
         setIsDialogOpen(true);
     };

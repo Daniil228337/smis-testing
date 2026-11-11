@@ -95,7 +95,7 @@ export default function EditorPage() {
       timeLimitMinutes: null,
       shuffleQuestions: false,
       shuffleAnswers: false,
-      questionCount: null,
+      questionCount: 20, // ← ЗАВОДСКОЙ СТАНДАРТ: 20 вопросов
     });
     setIsDialogOpen(true);
   };
