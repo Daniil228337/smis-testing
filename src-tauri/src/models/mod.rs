@@ -7,6 +7,7 @@ pub mod import;
 pub mod analytics;
 pub mod settings;
 pub mod export;
+pub mod ticket;
 
 pub use user::*;
 pub use test::*;
@@ -17,3 +18,4 @@ pub use import::*;
 pub use analytics::*;
 pub use settings::*;
 pub use export::*;
+pub use ticket::*;

@@ -47,17 +47,17 @@ pub async fn start_attempt(
     user_id: i64,
     test_id: i64,
 ) -> Result<(Attempt, Vec<AttemptQuestion>, Option<i32>), String> {
-    // 1. Получаем настройки теста
-    let test_row: Option<(Option<i32>, i32, i32, Option<i32>)> = sqlx::query_as(
-        "SELECT time_limit_minutes, shuffle_questions, shuffle_answers, question_count 
+    // 1. Получаем настройки теста (теперь включая use_tickets)
+    let test_row: Option<(Option<i32>, i32, i32, Option<i32>, i32)> = sqlx::query_as(
+        "SELECT time_limit_minutes, shuffle_questions, shuffle_answers, question_count, use_tickets
          FROM tests WHERE id = ?1"
     )
     .bind(test_id)
     .fetch_optional(&state.db)
     .await
     .map_err(|e| e.to_string())?;
-
-    let (time_limit, shuffle_questions, shuffle_answers, question_count) = 
+    
+    let (time_limit, shuffle_questions, shuffle_answers, question_count, use_tickets) =
         test_row.ok_or_else(|| "Тест не найден".to_string())?;
 
     // 2. Создаём запись о попытке
@@ -69,7 +69,7 @@ pub async fn start_attempt(
     .execute(&state.db)
     .await
     .map_err(|e| e.to_string())?;
-
+    
     let attempt_id = result.last_insert_rowid();
 
     // 2a. СРАЗУ получаем полную запись Attempt, чтобы не держать rng через await позже!
@@ -82,72 +82,146 @@ pub async fn start_attempt(
     .await
     .map_err(|e| e.to_string())?;
 
-    // 3. Получаем все вопросы теста с их вариантами
-    let question_rows: Vec<(i64, String, Option<String>, Option<String>, i64)> = sqlx::query_as(
-        "SELECT q.id, q.text, q.image_path, q.explanation, q.difficulty
-         FROM questions q
-         JOIN test_questions tq ON tq.question_id = q.id
-         WHERE tq.test_id = ?1
-         ORDER BY tq.order_index"
-    )
-    .bind(test_id)
-    .fetch_all(&state.db)
-    .await
-    .map_err(|e| e.to_string())?;
-
+    // 3. Получаем вопросы в зависимости от режима (use_tickets)
     let mut questions_with_answers: Vec<QuestionWithAnswers> = Vec::new();
 
-    for (q_id, q_text, q_image, q_expl, q_diff) in question_rows {
-        let answer_rows: Vec<(i64, String, Option<String>, i32)> = sqlx::query_as(
-            "SELECT id, text, image_path, is_correct 
-             FROM answers 
-             WHERE question_id = ?1 
-             ORDER BY order_index"
+    if use_tickets == 1 {
+        // === РЕЖИМ БИЛЕТОВ ===
+        let tickets: Vec<(i64,)> = sqlx::query_as(
+            "SELECT id FROM tickets WHERE test_id = ?1"
         )
-        .bind(q_id)
+        .bind(test_id)
         .fetch_all(&state.db)
         .await
         .map_err(|e| e.to_string())?;
 
-        let answers = answer_rows
-            .into_iter()
-            .map(|(a_id, a_text, a_image, is_correct)| {
-                (a_id, a_text, a_image, is_correct == 1)
-            })
-            .collect();
+        if tickets.is_empty() {
+            return Err("В тесте включён режим билетов, но билеты не созданы".to_string());
+        }
 
-        questions_with_answers.push(QuestionWithAnswers {
-            question_id: q_id,
-            text: q_text,
-            image_path: q_image,
-            explanation: q_expl,
-            difficulty: q_diff,
-            answers,
-        });
+        // Выбираем случайный билет (rng создаётся в ограниченной области видимости и сразу уничтожается)
+        let selected_ticket_id = {
+            let mut rng = rand::thread_rng();
+            let selected = tickets.choose(&mut rng)
+                .ok_or_else(|| "Не удалось выбрать билет".to_string())?;
+            selected.0
+        };
+
+        // Получаем вопросы ТОЛЬКО из выбранного билета
+        let question_rows: Vec<(i64, String, Option<String>, Option<String>, i64)> = sqlx::query_as(
+            r#"
+            SELECT q.id, q.text, q.image_path, q.explanation, q.difficulty
+            FROM questions q
+            JOIN ticket_questions tq ON tq.question_id = q.id
+            WHERE tq.ticket_id = ?1
+            ORDER BY tq.order_index
+            "#,
+        )
+        .bind(selected_ticket_id)
+        .fetch_all(&state.db)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        for (q_id, q_text, q_image, q_expl, q_diff) in question_rows {
+            let answer_rows: Vec<(i64, String, Option<String>, i32)> = sqlx::query_as(
+                "SELECT id, text, image_path, is_correct
+                 FROM answers
+                 WHERE question_id = ?1
+                 ORDER BY order_index"
+            )
+            .bind(q_id)
+            .fetch_all(&state.db)
+            .await
+            .map_err(|e| e.to_string())?;
+
+            let answers = answer_rows
+                .into_iter()
+                .map(|(a_id, a_text, a_image, is_correct)| {
+                    (a_id, a_text, a_image, is_correct == 1)
+                })
+                .collect();
+
+            questions_with_answers.push(QuestionWithAnswers {
+                question_id: q_id,
+                text: q_text,
+                image_path: q_image,
+                explanation: q_expl,
+                difficulty: q_diff,
+                answers,
+            });
+        }
+    } else {
+        // === ОБЫЧНЫЙ РЕЖИМ (как было раньше) ===
+        let question_rows: Vec<(i64, String, Option<String>, Option<String>, i64)> = sqlx::query_as(
+            "SELECT q.id, q.text, q.image_path, q.explanation, q.difficulty
+             FROM questions q
+             JOIN test_questions tq ON tq.question_id = q.id
+             WHERE tq.test_id = ?1
+             ORDER BY tq.order_index"
+        )
+        .bind(test_id)
+        .fetch_all(&state.db)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        for (q_id, q_text, q_image, q_expl, q_diff) in question_rows {
+            let answer_rows: Vec<(i64, String, Option<String>, i32)> = sqlx::query_as(
+                "SELECT id, text, image_path, is_correct
+                 FROM answers
+                 WHERE question_id = ?1
+                 ORDER BY order_index"
+            )
+            .bind(q_id)
+            .fetch_all(&state.db)
+            .await
+            .map_err(|e| e.to_string())?;
+
+            let answers = answer_rows
+                .into_iter()
+                .map(|(a_id, a_text, a_image, is_correct)| {
+                    (a_id, a_text, a_image, is_correct == 1)
+                })
+                .collect();
+
+            questions_with_answers.push(QuestionWithAnswers {
+                question_id: q_id,
+                text: q_text,
+                image_path: q_image,
+                explanation: q_expl,
+                difficulty: q_diff,
+                answers,
+            });
+        }
     }
 
     // ==========================================
     // ВСЕ .await ВЫЗОВЫ ЗАВЕРШЕНЫ ВЫШЕ!
-    // Теперь можно безопасно создавать thread_rng()
+    // Теперь можно безопасно создавать thread_rng() для перемешивания
     // ==========================================
-    
     let mut rng = rand::thread_rng();
 
-    // 4. Перемешиваем вопросы, если нужно
-    if shuffle_questions == 1 {
-        questions_with_answers.shuffle(&mut rng);
-    }
-
-    // 5. Ограничиваем количество вопросов, если задано
-    if let Some(count) = question_count {
-        if (count as usize) < questions_with_answers.len() {
-            questions_with_answers.truncate(count as usize);
+    // 4. Перемешиваем вопросы и ограничиваем количество (в зависимости от режима)
+    if use_tickets == 1 {
+        // В режиме билетов перемешиваем вопросы внутри билета, если включено
+        if shuffle_questions == 1 {
+            questions_with_answers.shuffle(&mut rng);
+        }
+        // Примечание: question_count игнорируется для билетов, так как билет — это фиксированный набор
+    } else {
+        // В обычном режиме применяем старые правила
+        if shuffle_questions == 1 {
+            questions_with_answers.shuffle(&mut rng);
+        }
+        if let Some(count) = question_count {
+            if (count as usize) < questions_with_answers.len() {
+                questions_with_answers.truncate(count as usize);
+            }
         }
     }
 
-    // 6. Формируем результат для фронтенда (БЕЗ is_correct!)
+    // 5. Формируем результат для фронтенда (БЕЗ is_correct!)
     let mut attempt_questions: Vec<AttemptQuestion> = Vec::new();
-
+    
     for q in questions_with_answers {
         let mut answers: Vec<AnswerOption> = q.answers
             .into_iter()
@@ -174,12 +248,12 @@ pub async fn start_attempt(
     }
 
     log::info!(
-        "Начата попытка #{} для теста #{} (вопросов: {}, shuffle_q: {}, shuffle_a: {})",
-        attempt.id, test_id, attempt_questions.len(), shuffle_questions, shuffle_answers
+        "Начата попытка #{} для теста #{} (вопросов: {}, shuffle_q: {}, shuffle_a: {}, use_tickets: {})",
+        attempt.id, test_id, attempt_questions.len(), shuffle_questions, shuffle_answers, use_tickets
     );
-
+    
     Ok((attempt, attempt_questions, time_limit))
-}
+}   
 
 /// Сохранение ответа на вопрос
 #[tauri::command]

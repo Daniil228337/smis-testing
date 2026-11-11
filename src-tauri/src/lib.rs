@@ -1,22 +1,25 @@
 use sqlx::SqlitePool;
 use tauri::Manager;
-use crate::commands::db::{check_db, get_db_info};
-use crate::commands::user::{create_user, get_recent_users, get_or_create_admin_user};
+
 use crate::db::{create_pool, run_migrations};
+
+use crate::commands::db::{check_db, get_db_info};
+use crate::commands::user::{create_user, get_recent_users}; 
+
 use crate::commands::test::{get_all_tests, get_all_disciplines};
 use crate::commands::attempt::{start_attempt, save_answer, finish_attempt, get_attempt_result};
-use crate::commands::editor::{
-    get_all_tests_for_editor, create_test, update_test, delete_test, duplicate_test,
-};
-use crate::commands::question::{
-    get_test_questions, create_question, update_question, delete_question, duplicate_question,
-    upload_image, delete_image, reorder_questions,
-};
+use crate::commands::editor::{get_all_tests_for_editor, create_test, update_test, delete_test, duplicate_test};
+use crate::commands::question::{get_test_questions, create_question, update_question, delete_question, duplicate_question, upload_image, delete_image, reorder_questions};
 use crate::commands::analytics::{get_all_attempts, get_attempt_details, clear_all_attempts};
 use crate::commands::import::import_questions_from_excel;
 use crate::commands::settings::{get_setting, set_setting, get_all_settings, update_settings, get_uploads_dir_path};
 use crate::commands::admin::{init_admin_password, verify_admin_password, change_admin_password};
 use crate::commands::export::{save_export_file, save_pdf, save_file_to_path};
+use crate::commands::ticket::{
+    get_test_tickets, create_ticket, duplicate_ticket,
+    assign_questions_to_ticket, auto_distribute_questions, delete_ticket,
+    set_test_use_tickets, get_ticket_questions,
+};
 
 mod commands;
 mod db;
@@ -86,7 +89,6 @@ pub fn run() {
             get_db_info,
             create_user,
             get_recent_users,
-            get_or_create_admin_user,
             get_setting,
             set_setting,
             get_all_tests,
@@ -100,11 +102,11 @@ pub fn run() {
             init_admin_password,
             verify_admin_password,
             change_admin_password,
-            get_all_tests_for_editor,  
-            create_test,               
-            update_test,             
-            delete_test,              
-            duplicate_test, 
+            get_all_tests_for_editor,
+            create_test,
+            update_test,
+            delete_test,
+            duplicate_test,
             get_test_questions,
             create_question,
             update_question,
@@ -121,6 +123,15 @@ pub fn run() {
             save_export_file,
             save_pdf,
             save_file_to_path,
+            // Команды для билетов:
+            get_test_tickets,
+            create_ticket,
+            duplicate_ticket,
+            assign_questions_to_ticket,
+            auto_distribute_questions,
+            delete_ticket,
+            set_test_use_tickets,
+            get_ticket_questions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
