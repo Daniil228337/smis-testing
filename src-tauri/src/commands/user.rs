@@ -90,18 +90,51 @@ pub async fn create_user(
 }
 
 /// Последние 5 пользователей (для блока «Последние пользователи»).
-/// Сортировка по времени последнего входа (или создания, если входа не было).
+/// ИСКЛЮЧАЕМ админов (group_name = 'ADMIN')
 #[tauri::command]
 pub async fn get_recent_users(state: State<'_, AppState>) -> Result<Vec<User>, String> {
     let users: Vec<User> = sqlx::query_as(
         "SELECT id, full_name, group_name, created_at, last_used_at
          FROM users
+         WHERE group_name != 'ADMIN'
          ORDER BY COALESCE(last_used_at, created_at) DESC
          LIMIT 5",
     )
     .fetch_all(&state.db)
     .await
     .map_err(|e| e.to_string())?;
-
     Ok(users)
+}
+
+/// Получить или создать ID специального пользователя "Администратор"
+/// Используется, когда админ хочет пройти тест для проверки
+#[tauri::command]
+pub async fn get_or_create_admin_user(
+    state: State<'_, AppState>,
+) -> Result<i64, String> { // <-- ВАЖНО: возвращаем i64, а не User
+    // Ищем существующего админ-пользователя
+    let existing: Option<(i64,)> = sqlx::query_as(
+        "SELECT id FROM users WHERE group_name = 'ADMIN' LIMIT 1"
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    if let Some((id,)) = existing {
+        log::info!("Использован существующий админ-пользователь #{}", id);
+        return Ok(id);
+    }
+
+    // Создаём нового
+    let result = sqlx::query(
+        "INSERT INTO users (full_name, group_name, last_used_at) 
+         VALUES ('Администратор', 'ADMIN', CURRENT_TIMESTAMP)"
+    )
+    .execute(&state.db)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let id = result.last_insert_rowid();
+    log::info!("✅ Создан админ-пользователь #{}", id);
+    Ok(id) // <-- Возвращаем только число
 }

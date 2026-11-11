@@ -1,0 +1,334 @@
+{
+  "app": {
+    "title": "СМИС Тестирование",
+    "subtitle": "Кафедра СМИС БНТУ"
+  },
+  "nav": {
+    "tests": "Библиотека тестов",
+    "analytics": "Аналитика",
+    "editor": "Редактор",
+    "settings": "Настройки",
+    "logout": "Завершить сеанс"
+  },
+  "login": {
+    "title": "Вход в систему",
+    "subtitle": "СМИС-Тестирование · Кафедра СМИС БНТУ",
+    "fullName": "ФИО",
+    "fullNamePlaceholder": "Иванов Иван Иванович",
+    "group": "Группа",
+    "customGroup": "Другая группа…",
+    "customGroupPlaceholder": "Введите группу, например ИС-25",
+    "submit": "Войти",
+    "submitting": "Вход…",
+    "recentUsers": "Последние пользователи",
+    "noRecentUsers": "Пока никого нет — вы будете первым!",
+    "loading": "Загрузка…",
+    "teacherMode": "Режим преподавателя",
+    "errors": {
+      "fullNameTooShort": "Введите ФИО полностью (минимум 3 символа)",
+      "groupEmpty": "Выберите группу или введите свою"
+    }
+  },
+  "editorLogin": {
+    "title": "Вход для преподавателя",
+    "subtitle": "Введите пароль для доступа к редактору тестов",
+    "password": "Пароль",
+    "passwordPlaceholder": "Введите пароль",
+    "submit": "Войти",
+    "submitting": "Проверка...",
+    "showPassword": "Показать пароль",
+    "hidePassword": "Скрыть пароль",
+    "defaultPassword": "Пароль по умолчанию",
+    "wrongPassword": "Неверный пароль"
+  },
+  "admin": {
+    "title": "Администратор",
+    "subtitle": "Режим редактирования"
+  },
+  "tests": {
+    "title": "Библиотека тестов",
+    "subtitle": "Выберите тест для прохождения",
+    "searchPlaceholder": "Поиск по названию...",
+    "allDisciplines": "Все дисциплины",
+    "sortByDate": "По дате ↓",
+    "sortByTitle": "По названию А-Я",
+    "sortByDifficulty": "По сложности ↑",
+    "noTests": "Нет доступных тестов",
+    "noTestsHint": "Попробуйте изменить фильтры",
+    "noTestsHintDefault": "Обратитесь к преподавателю",
+    "questions": "вопр.",
+    "noLimit": "Без лимита",
+    "min": "мин",
+    "shuffleQuestions": "Вопросы перемешиваются",
+    "shuffleAnswers": "Ответы перемешиваются",
+    "difficulty": {
+      "easy": "Лёгкий",
+      "medium": "Средний",
+      "hard": "Сложный"
+    }
+  },
+  "testTaking": {
+    "loading": "Загрузка теста...",
+    "hotkeys": "Горячие клавиши",
+    "selectAnswer": "выбор ответа",
+    "next": "далее",
+    "prev": "назад",
+    "back": "Назад",
+    "nextBtn": "Далее",
+    "finish": "Завершить тест",
+    "finishConfirm": {
+      "title": "Завершить тест?",
+      "answered": "Вы ответили на {{count}} из {{total}} вопросов.",
+      "warning": "⚠️ Остались вопросы без ответа — они будут засчитаны как неправильные.",
+      "continue": "Продолжить тест",
+      "finish": "Завершить",
+      "finishing": "Завершение..."
+    }
+  },
+  "result": {
+    "title": "Результат тестирования",
+    "loading": "Загрузка результата...",
+    "error": "Ошибка загрузки результата",
+    "backToLibrary": "Вернуться к библиотеке",
+    "timeSpent": "Время прохождения",
+    "retry": "Пройти ещё раз",
+    "logout": "Завершить сеанс",
+    "review": "Разбор ответов",
+    "question": "Вопрос",
+    "yourAnswer": "Ваш ответ",
+    "correctAnswer": "Правильный ответ",
+    "notAnswered": "Не отвечено",
+    "explanation": "Пояснение",
+    "grades": {
+      "excellent": "Отлично!",
+      "good": "Хорошо",
+      "satisfactory": "Удовлетворительно",
+      "needsWork": "Нужно подтянуть"
+    }
+  },
+  "editor": {
+    "title": "Редактор тестов",
+    "subtitle": "Управление тестами и вопросами",
+    "createTest": "Создать тест",
+    "createTestTitle": "Создать тест",
+    "editTestTitle": "Редактировать тест",
+    "createTestSubtitle": "Заполните информацию о новом тесте",
+    "editTestSubtitle": "Измените параметры теста",
+    "noTests": "Нет тестов. Создайте первый тест!",
+    "columns": {
+      "title": "Название",
+      "discipline": "Дисциплина",
+      "questions": "Вопросов",
+      "time": "Время",
+      "shuffle": "Shuffle",
+      "actions": "Действия"
+    },
+    "fields": {
+      "title": "Название",
+      "titlePlaceholder": "Введите название теста",
+      "description": "Описание",
+      "descriptionPlaceholder": "Описание теста (необязательно)",
+      "discipline": "Дисциплина",
+      "disciplinePlaceholder": "Выберите дисциплину",
+      "timeLimit": "Лимит времени (минуты)",
+      "timeLimitPlaceholder": "Оставьте пустым для безлимита",
+      "questionCount": "Количество вопросов",
+      "questionCountPlaceholder": "Оставьте пустым для всех вопросов",
+      "shuffleQuestions": "Перемешивать вопросы",
+      "shuffleAnswers": "Перемешивать ответы"
+    },
+    "actions": {
+      "editQuestions": "Редактировать вопросы",
+      "editTest": "Редактировать тест",
+      "duplicate": "Дублировать тест",
+      "delete": "Удалить тест"
+    },
+    "errors": {
+      "titleEmpty": "Название теста не может быть пустым",
+      "disciplineEmpty": "Выберите дисциплину"
+    },
+    "buttons": {
+      "cancel": "Отмена",
+      "save": "Сохранить",
+      "create": "Создать",
+      "saving": "Сохранение...",
+      "delete": "Удалить",
+      "deleting": "Удаление..."
+    },
+    "deleteConfirm": {
+      "title": "Удалить тест?",
+      "description": "Это действие нельзя отменить. Все связи с вопросами будут удалены."
+    }
+  },
+  "editorTest": {
+    "title": "Редактор вопросов",
+    "subtitle": "Тест #{{testId}} · {{count}} вопросов",
+    "addQuestion": "Добавить вопрос",
+    "noQuestions": "Нет вопросов. Добавьте первый вопрос!",
+    "createTitle": "Добавить вопрос",
+    "editTitle": "Редактировать вопрос",
+    "createSubtitle": "Заполните информацию о новом вопросе",
+    "editSubtitle": "Измените текст вопроса и варианты ответов",
+    "fields": {
+      "image": "Картинка вопроса",
+      "imageOptional": "Картинка вопроса (необязательно)",
+      "text": "Текст вопроса",
+      "textPlaceholder": "Введите текст вопроса",
+      "explanation": "Пояснение",
+      "explanationOptional": "Пояснение (необязательно)",
+      "explanationPlaceholder": "Пояснение будет показано после ответа",
+      "difficulty": "Сложность",
+      "answers": "Варианты ответов",
+      "answersHint": "Варианты ответов * (минимум 2, максимум 6)",
+      "answerPlaceholder": "Вариант {{letter}}"
+    },
+    "buttons": {
+      "addAnswer": "Добавить вариант"
+    },
+    "errors": {
+      "textEmpty": "Текст вопроса не может быть пустым",
+      "minAnswers": "Нужно минимум 2 варианта ответа",
+      "noCorrect": "Нужно отметить хотя бы один правильный ответ",
+      "emptyAnswers": "Все варианты ответа должны быть заполнены"
+    },
+    "deleteConfirm": {
+      "title": "Удалить вопрос?",
+      "description": "Это действие нельзя отменить. Вопрос будет удалён из всех тестов."
+    }
+  },
+  "analytics": {
+    "title": "Аналитика",
+    "subtitle": "Обзор результатов тестирования студентов",
+    "filters": {
+      "group": "Группа",
+      "groupPlaceholder": "Например: ИС-23",
+      "dateFrom": "Дата от",
+      "dateTo": "Дата до",
+      "sortBy": "Сортировка",
+      "byDate": "По дате",
+      "byResult": "По результату",
+      "byName": "По имени",
+      "byTest": "По тесту",
+      "desc": "↓ Убыв.",
+      "asc": "↑ Возр.",
+      "apply": "Применить"
+    },
+    "columns": {
+      "student": "Студент / Группа",
+      "test": "Тест",
+      "date": "Дата",
+      "result": "Результат",
+      "time": "Время",
+      "actions": "Действия"
+    },
+    "noAttempts": "Попыток не найдено",
+    "inProgress": "В процессе",
+    "min": "мин",
+    "details": {
+      "title": "Детали попытки #{{id}}",
+      "student": "Студент",
+      "test": "Тест",
+      "result": "Результат",
+      "time": "Время",
+      "min": "мин",
+      "sec": "сек",
+      "review": "Разбор ответов",
+      "question": "Вопрос",
+      "studentAnswer": "Ответ студента",
+      "correctAnswer": "Правильный ответ",
+      "notAnswered": "Не отвечено",
+      "explanation": "Пояснение",
+      "timePerQuestion": "Время на вопрос"
+    },
+    "clearHistory": {
+      "button": "Очистить историю",
+      "title": "Очистить всю историю?",
+      "description": "Это действие удалит все записи о попытках прохождения тестов.",
+      "willBeDeleted": "⚠️ Будут удалены:",
+      "deletedList": "Все попытки прохождения тестов;Все ответы студентов;Вся статистика и результаты",
+      "willRemain": "✅ Останется без изменений:",
+      "remainList": "Все тесты;Все вопросы и варианты ответов;Все пользователи;Настройки приложения",
+      "cancel": "Отмена",
+      "deleteAll": "Удалить всё",
+      "deleting": "Удаление..."
+    },
+    "export": {
+      "csv": "Экспорт CSV",
+      "json": "Экспорт JSON",
+      "pdf": "Экспорт PDF",
+      "pdfAttempt": "PDF попытки",
+      "saved": "Файл сохранён:",
+      "pdfSaved": "PDF сохранён:"
+    }
+  },
+  "settings": {
+    "title": "Настройки",
+    "subtitle": "Управление внешним видом и безопасностью приложения",
+    "appearance": {
+      "title": "Внешний вид",
+      "description": "Настройте цветовую схему и типографику приложения",
+      "accentColor": "Акцентный цвет",
+      "fontSize": "Размер шрифта",
+      "fontFamily": "Семейство шрифтов",
+      "fontSizes": {
+        "small": "Мелкий (14px)",
+        "medium": "Средний (16px)",
+        "large": "Крупный (18px)",
+        "xlarge": "Очень крупный (20px)"
+      },
+      "fontFamilies": {
+        "system": "Системный (по умолчанию)",
+        "sans": "Без засечек (Sans-serif)",
+        "serif": "С засечками (Serif)",
+        "mono": "Моноширинный (Monospace)"
+      },
+      "save": "Сохранить внешний вид"
+    },
+    "language": {
+      "title": "Язык / Мова / Language",
+      "description": "Выберите язык интерфейса приложения"
+    },
+    "security": {
+      "title": "Безопасность",
+      "description": "Изменение пароля для входа в режим преподавателя",
+      "oldPassword": "Текущий пароль",
+      "newPassword": "Новый пароль",
+      "confirmPassword": "Подтвердите новый пароль",
+      "changePassword": "Изменить пароль",
+      "changing": "Изменение...",
+      "errors": {
+        "tooShort": "Новый пароль должен быть не короче 6 символов",
+        "mismatch": "Пароли не совпадают"
+      }
+    },
+    "about": {
+      "title": "О приложении",
+      "name": "Название",
+      "version": "Версия",
+      "developer": "Разработчик",
+      "stack": "Стек",
+      "copyright": "© 2026 Кафедра СМИС БНТУ. Все права защищены."
+    },
+    "messages": {
+      "saved": "Настройки успешно сохранены!",
+      "passwordChanged": "Пароль администратора успешно изменён!"
+    }
+  },
+  "common": {
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "retry": "Повторить",
+    "cancel": "Отмена",
+    "save": "Сохранить",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "create": "Создать",
+    "close": "Закрыть",
+    "confirm": "Подтвердить",
+    "yes": "Да",
+    "no": "Нет",
+    "or": "или",
+    "optional": "необязательно",
+    "required": "обязательно"
+  }
+}

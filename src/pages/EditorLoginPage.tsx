@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { Lock, LogIn, Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,9 +18,10 @@ import { cn } from "@/lib/utils";
 export default function EditorLoginPage() {
   const navigate = useNavigate();
   const setAdmin = useAuthStore((s) => s.setAdmin);
+  const { t } = useTranslation();
 
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // ← отдельное состояние для глазика
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,7 +39,7 @@ export default function EditorLoginPage() {
         setAdmin(true);
         navigate("/editor");
       } else {
-        setError("Неверный пароль");
+        setError(t("editorLogin.wrongPassword"));
       }
     } catch (err) {
       setError(String(err));
@@ -52,10 +54,10 @@ export default function EditorLoginPage() {
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center flex items-center justify-center gap-2">
             <Lock className="h-6 w-6" />
-            Вход для преподавателя
+            {t("editorLogin.title")}
           </CardTitle>
           <CardDescription className="text-center">
-            Введите пароль для доступа к редактору тестов
+            {t("editorLogin.subtitle")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -63,28 +65,31 @@ export default function EditorLoginPage() {
             {/* Поле пароля с глазиком */}
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-medium">
-                Пароль
+                {t("editorLogin.password")}
               </label>
               <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Введите пароль"
+                  placeholder={t("editorLogin.passwordPlaceholder")}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoFocus
                   disabled={loading}
-                  className="pr-10" // отступ справа, чтобы текст не залезал на иконку
+                  className="pr-10"
                 />
-                
-                {/* Глазик отображается ТОЛЬКО если в поле что-то введено */}
                 {password.length > 0 && (
                   <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    tabIndex={-1} // чтобы не перехватывал фокус при навигации Tab
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                    tabIndex={-1}
+                    className={cn(
+                      "absolute right-2.5 top-1/2 -translate-y-1/2",
+                      "flex h-7 w-7 items-center justify-center",
+                      "rounded-md text-muted-foreground hover:text-foreground",
+                      "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    )}
+                    aria-label={showPassword ? t("editorLogin.hidePassword") : t("editorLogin.showPassword")}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -110,19 +115,19 @@ export default function EditorLoginPage() {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Проверка...
+                  {t("editorLogin.submitting")}
                 </>
               ) : (
                 <>
                   <LogIn className="mr-2 h-4 w-4" />
-                  Войти
+                  {t("editorLogin.submit")}
                 </>
               )}
             </Button>
 
             {/* Подсказка */}
             <p className="text-xs text-muted-foreground text-center pt-2">
-              Пароль по умолчанию:{" "}
+              {t("editorLogin.defaultPassword")}:{" "}
               <code className="bg-muted px-1.5 py-0.5 rounded">admin123</code>
             </p>
           </form>

@@ -1,0 +1,334 @@
+{
+  "app": {
+    "title": "SMIS Testing",
+    "subtitle": "SMIS Department of BNTU"
+  },
+  "nav": {
+    "tests": "Tests Library",
+    "analytics": "Analytics",
+    "editor": "Editor",
+    "settings": "Settings",
+    "logout": "End Session"
+  },
+  "login": {
+    "title": "Sign In",
+    "subtitle": "SMIS Testing · SMIS Department of BNTU",
+    "fullName": "Full Name",
+    "fullNamePlaceholder": "John Doe",
+    "group": "Group",
+    "customGroup": "Other group…",
+    "customGroupPlaceholder": "Enter group, e.g. IS-25",
+    "submit": "Sign In",
+    "submitting": "Signing in…",
+    "recentUsers": "Recent Users",
+    "noRecentUsers": "No one yet — you'll be the first!",
+    "loading": "Loading…",
+    "teacherMode": "Teacher Mode",
+    "errors": {
+      "fullNameTooShort": "Please enter your full name (at least 3 characters)",
+      "groupEmpty": "Please select or enter a group"
+    }
+  },
+  "editorLogin": {
+    "title": "Teacher Sign In",
+    "subtitle": "Enter password to access the test editor",
+    "password": "Password",
+    "passwordPlaceholder": "Enter password",
+    "submit": "Sign In",
+    "submitting": "Verifying...",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "defaultPassword": "Default password",
+    "wrongPassword": "Wrong password"
+  },
+  "admin": {
+    "title": "Administrator",
+    "subtitle": "Edit mode"
+  },
+  "tests": {
+    "title": "Tests Library",
+    "subtitle": "Select a test to take",
+    "searchPlaceholder": "Search by title...",
+    "allDisciplines": "All disciplines",
+    "sortByDate": "By date ↓",
+    "sortByTitle": "By title A-Z",
+    "sortByDifficulty": "By difficulty ↑",
+    "noTests": "No tests available",
+    "noTestsHint": "Try changing the filters",
+    "noTestsHintDefault": "Please contact your teacher",
+    "questions": "questions",
+    "noLimit": "No limit",
+    "min": "min",
+    "shuffleQuestions": "Questions are shuffled",
+    "shuffleAnswers": "Answers are shuffled",
+    "difficulty": {
+      "easy": "Easy",
+      "medium": "Medium",
+      "hard": "Hard"
+    }
+  },
+  "testTaking": {
+    "loading": "Loading test...",
+    "hotkeys": "Hotkeys",
+    "selectAnswer": "select answer",
+    "next": "next",
+    "prev": "previous",
+    "back": "Back",
+    "nextBtn": "Next",
+    "finish": "Finish test",
+    "finishConfirm": {
+      "title": "Finish the test?",
+      "answered": "You answered {{count}} out of {{total}} questions.",
+      "warning": "⚠️ Unanswered questions will be marked as incorrect.",
+      "continue": "Continue test",
+      "finish": "Finish",
+      "finishing": "Finishing..."
+    }
+  },
+  "result": {
+    "title": "Test Result",
+    "loading": "Loading result...",
+    "error": "Error loading result",
+    "backToLibrary": "Back to library",
+    "timeSpent": "Time spent",
+    "retry": "Try again",
+    "logout": "End session",
+    "review": "Answer Review",
+    "question": "Question",
+    "yourAnswer": "Your answer",
+    "correctAnswer": "Correct answer",
+    "notAnswered": "Not answered",
+    "explanation": "Explanation",
+    "grades": {
+      "excellent": "Excellent!",
+      "good": "Good",
+      "satisfactory": "Satisfactory",
+      "needsWork": "Needs improvement"
+    }
+  },
+  "editor": {
+    "title": "Test Editor",
+    "subtitle": "Manage tests and questions",
+    "createTest": "Create test",
+    "createTestTitle": "Create Test",
+    "editTestTitle": "Edit Test",
+    "createTestSubtitle": "Fill in the information about the new test",
+    "editTestSubtitle": "Change test parameters",
+    "noTests": "No tests. Create your first test!",
+    "columns": {
+      "title": "Title",
+      "discipline": "Discipline",
+      "questions": "Questions",
+      "time": "Time",
+      "shuffle": "Shuffle",
+      "actions": "Actions"
+    },
+    "fields": {
+      "title": "Title",
+      "titlePlaceholder": "Enter test title",
+      "description": "Description",
+      "descriptionPlaceholder": "Test description (optional)",
+      "discipline": "Discipline",
+      "disciplinePlaceholder": "Select discipline",
+      "timeLimit": "Time limit (minutes)",
+      "timeLimitPlaceholder": "Leave empty for no limit",
+      "questionCount": "Number of questions",
+      "questionCountPlaceholder": "Leave empty for all questions",
+      "shuffleQuestions": "Shuffle questions",
+      "shuffleAnswers": "Shuffle answers"
+    },
+    "actions": {
+      "editQuestions": "Edit questions",
+      "editTest": "Edit test",
+      "duplicate": "Duplicate test",
+      "delete": "Delete test"
+    },
+    "errors": {
+      "titleEmpty": "Test title cannot be empty",
+      "disciplineEmpty": "Please select a discipline"
+    },
+    "buttons": {
+      "cancel": "Cancel",
+      "save": "Save",
+      "create": "Create",
+      "saving": "Saving...",
+      "delete": "Delete",
+      "deleting": "Deleting..."
+    },
+    "deleteConfirm": {
+      "title": "Delete test?",
+      "description": "This action cannot be undone. All question associations will be removed."
+    }
+  },
+  "editorTest": {
+    "title": "Question Editor",
+    "subtitle": "Test #{{testId}} · {{count}} questions",
+    "addQuestion": "Add question",
+    "noQuestions": "No questions. Add your first question!",
+    "createTitle": "Add Question",
+    "editTitle": "Edit Question",
+    "createSubtitle": "Fill in the information about the new question",
+    "editSubtitle": "Change the question text and answer options",
+    "fields": {
+      "image": "Question image",
+      "imageOptional": "Question image (optional)",
+      "text": "Question text",
+      "textPlaceholder": "Enter question text",
+      "explanation": "Explanation",
+      "explanationOptional": "Explanation (optional)",
+      "explanationPlaceholder": "Explanation will be shown after answering",
+      "difficulty": "Difficulty",
+      "answers": "Answer options",
+      "answersHint": "Answer options * (minimum 2, maximum 6)",
+      "answerPlaceholder": "Option {{letter}}"
+    },
+    "buttons": {
+      "addAnswer": "Add option"
+    },
+    "errors": {
+      "textEmpty": "Question text cannot be empty",
+      "minAnswers": "At least 2 answer options are required",
+      "noCorrect": "At least one correct answer must be marked",
+      "emptyAnswers": "All answer options must be filled in"
+    },
+    "deleteConfirm": {
+      "title": "Delete question?",
+      "description": "This action cannot be undone. The question will be removed from all tests."
+    }
+  },
+  "analytics": {
+    "title": "Analytics",
+    "subtitle": "Overview of student test results",
+    "filters": {
+      "group": "Group",
+      "groupPlaceholder": "e.g. IS-23",
+      "dateFrom": "From date",
+      "dateTo": "To date",
+      "sortBy": "Sort by",
+      "byDate": "By date",
+      "byResult": "By result",
+      "byName": "By name",
+      "byTest": "By test",
+      "desc": "↓ Desc.",
+      "asc": "↑ Asc.",
+      "apply": "Apply"
+    },
+    "columns": {
+      "student": "Student / Group",
+      "test": "Test",
+      "date": "Date",
+      "result": "Result",
+      "time": "Time",
+      "actions": "Actions"
+    },
+    "noAttempts": "No attempts found",
+    "inProgress": "In progress",
+    "min": "min",
+    "details": {
+      "title": "Attempt #{{id}} Details",
+      "student": "Student",
+      "test": "Test",
+      "result": "Result",
+      "time": "Time",
+      "min": "min",
+      "sec": "sec",
+      "review": "Answer Review",
+      "question": "Question",
+      "studentAnswer": "Student's answer",
+      "correctAnswer": "Correct answer",
+      "notAnswered": "Not answered",
+      "explanation": "Explanation",
+      "timePerQuestion": "Time per question"
+    },
+    "clearHistory": {
+      "button": "Clear history",
+      "title": "Clear all history?",
+      "description": "This will delete all test attempt records.",
+      "willBeDeleted": "⚠️ Will be deleted:",
+      "deletedList": "All test attempts;All student answers;All statistics and results",
+      "willRemain": "✅ Will remain unchanged:",
+      "remainList": "All tests;All questions and answer options;All users;Application settings",
+      "cancel": "Cancel",
+      "deleteAll": "Delete all",
+      "deleting": "Deleting..."
+    },
+    "export": {
+      "csv": "Export CSV",
+      "json": "Export JSON",
+      "pdf": "Export PDF",
+      "pdfAttempt": "Attempt PDF",
+      "saved": "File saved:",
+      "pdfSaved": "PDF saved:"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage appearance and security",
+    "appearance": {
+      "title": "Appearance",
+      "description": "Customize the color scheme and typography",
+      "accentColor": "Accent color",
+      "fontSize": "Font size",
+      "fontFamily": "Font family",
+      "fontSizes": {
+        "small": "Small (14px)",
+        "medium": "Medium (16px)",
+        "large": "Large (18px)",
+        "xlarge": "Extra large (20px)"
+      },
+      "fontFamilies": {
+        "system": "System (default)",
+        "sans": "Sans-serif",
+        "serif": "Serif",
+        "mono": "Monospace"
+      },
+      "save": "Save appearance"
+    },
+    "language": {
+      "title": "Language / Мова / Язык",
+      "description": "Choose the application interface language"
+    },
+    "security": {
+      "title": "Security",
+      "description": "Change the teacher mode password",
+      "oldPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "changePassword": "Change password",
+      "changing": "Changing...",
+      "errors": {
+        "tooShort": "New password must be at least 6 characters",
+        "mismatch": "Passwords do not match"
+      }
+    },
+    "about": {
+      "title": "About",
+      "name": "Name",
+      "version": "Version",
+      "developer": "Developer",
+      "stack": "Stack",
+      "copyright": "© 2026 SMIS Department of BNTU. All rights reserved."
+    },
+    "messages": {
+      "saved": "Settings saved successfully!",
+      "passwordChanged": "Admin password changed successfully!"
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "close": "Close",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No",
+    "or": "or",
+    "optional": "optional",
+    "required": "required"
+  }
+}

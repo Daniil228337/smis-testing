@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { LogIn, ShieldAlert, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,11 +25,13 @@ const POPULAR_GROUPS = [
   "СМ-23",
   "СМ-24",
 ];
+
 const CUSTOM_GROUP = "__custom__";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const login = useAuthStore((s) => s.login);
+  const { t } = useTranslation();
 
   const [fullName, setFullName] = useState("");
   const [groupMode, setGroupMode] = useState(POPULAR_GROUPS[0]);
@@ -77,11 +80,17 @@ export default function LoginPage() {
     const group = effectiveGroup.trim();
 
     if (name.length < 3) {
-      setError("Введите ФИО полностью (минимум 3 символа)");
+      setError(t("login.errors.fullNameTooShort"));
       return;
     }
+
     if (!group) {
-      setError("Выберите группу или введите свою");
+      setError(t("login.errors.groupEmpty"));
+      return;
+    }
+
+    if (group.toUpperCase() === 'ADMIN') {
+      setError("Для входа в режим администратора используйте «Режим преподавателя» внизу страницы");
       return;
     }
 
@@ -105,9 +114,9 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-4">
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">Вход в систему</CardTitle>
+            <CardTitle className="text-2xl font-bold">{t("login.title")}</CardTitle>
             <CardDescription>
-              СМИС-Тестирование · Кафедра СМИС БНТУ
+              {t("login.subtitle")}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -115,11 +124,11 @@ export default function LoginPage() {
               {/* ФИО */}
               <div className="space-y-1.5">
                 <label htmlFor="fullName" className="text-sm font-medium">
-                  ФИО
+                  {t("login.fullName")}
                 </label>
                 <Input
                   id="fullName"
-                  placeholder="Иванов Иван Иванович"
+                  placeholder={t("login.fullNamePlaceholder")}
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   autoFocus
@@ -129,7 +138,7 @@ export default function LoginPage() {
               {/* Группа */}
               <div className="space-y-1.5">
                 <label htmlFor="group" className="text-sm font-medium">
-                  Группа
+                  {t("login.group")}
                 </label>
                 <select
                   id="group"
@@ -142,11 +151,11 @@ export default function LoginPage() {
                       {g}
                     </option>
                   ))}
-                  <option value={CUSTOM_GROUP}>Другая группа…</option>
+                  <option value={CUSTOM_GROUP}>{t("login.customGroup")}</option>
                 </select>
                 {groupMode === CUSTOM_GROUP && (
                   <Input
-                    placeholder="Введите группу, например ИС-25"
+                    placeholder={t("login.customGroupPlaceholder")}
                     value={customGroup}
                     onChange={(e) => setCustomGroup(e.target.value)}
                   />
@@ -158,7 +167,7 @@ export default function LoginPage() {
 
               <Button type="submit" className="w-full" disabled={loading}>
                 <LogIn className="h-4 w-4" />
-                {loading ? "Вход…" : "Войти"}
+                {loading ? t("login.submitting") : t("login.submit")}
               </Button>
             </form>
 
@@ -166,13 +175,13 @@ export default function LoginPage() {
             <div className="mt-4">
               <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase text-muted-foreground">
                 <UserRound className="h-3.5 w-3.5" />
-                Последние пользователи
+                {t("login.recentUsers")}
               </p>
               {loadingRecent ? (
-                <p className="text-sm text-muted-foreground">Загрузка…</p>
+                <p className="text-sm text-muted-foreground">{t("login.loading")}</p>
               ) : recentUsers.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Пока никого нет — вы будете первым!
+                  {t("login.noRecentUsers")}
                 </p>
               ) : (
                 <div className="space-y-1.5">
@@ -207,7 +216,7 @@ export default function LoginPage() {
             className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
           >
             <ShieldAlert className="h-4 w-4" />
-            Режим преподавателя
+            {t("login.teacherMode")}
           </Link>
         </p>
       </div>

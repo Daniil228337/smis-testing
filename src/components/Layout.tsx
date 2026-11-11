@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   BookOpen,
   BarChart3,
@@ -6,26 +7,23 @@ import {
   LogOut,
   User,
   PenTool,
-  Shield, // ← Добавлено: иконка щита для админа
+  Shield,
 } from "lucide-react";
+import { useAppStore } from "@/store/appStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
-import { useAppStore } from "@/store/appStore";
-import { useAppSettings } from "@/hooks/useAppSettings";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function Layout() {
   const { currentUser, isAdmin, logout } = useAuthStore();
-  const initPaths = useAppStore((s) => s.initPaths);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
-  useAppSettings();
+  const initPaths = useAppStore((s) => s.initPaths);
+  initPaths();
 
-  useEffect(() => {
-    initPaths();
-  }, [initPaths]);
 
   const handleLogout = () => {
     logout();
@@ -33,10 +31,10 @@ export default function Layout() {
   };
 
   const navItems = [
-    { to: "/tests", label: "Библиотека тестов", icon: BookOpen },
-    { to: "/analytics", label: "Аналитика", icon: BarChart3, adminOnly: true },
-    { to: "/editor", label: "Редактор", icon: PenTool, adminOnly: true },
-    { to: "/settings", label: "Настройки", icon: Settings },
+    { to: "/tests", label: t("nav.tests"), icon: BookOpen },
+    { to: "/analytics", label: t("nav.analytics"), icon: BarChart3, adminOnly: true },
+    { to: "/editor", label: t("nav.editor"), icon: PenTool, adminOnly: true },
+    { to: "/settings", label: t("nav.settings"), icon: Settings },
   ];
 
   return (
@@ -45,8 +43,8 @@ export default function Layout() {
       <aside className="w-64 border-r border-border bg-card p-4 flex flex-col">
         {/* Логотип */}
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-primary">СМИС Тестирование</h2>
-          <p className="text-xs text-muted-foreground">Кафедра СМИС БНТУ</p>
+          <h2 className="text-xl font-bold text-primary">{t("app.title")}</h2>
+          <p className="text-xs text-muted-foreground">{t("app.subtitle")}</p>
         </div>
 
         {/* Информация о пользователе или админе */}
@@ -73,9 +71,9 @@ export default function Layout() {
                 <Shield className="h-4 w-4 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-primary">Администратор</p>
+                <p className="text-sm font-medium text-primary">{t("admin.title")}</p>
                 <p className="text-xs text-muted-foreground">
-                  Режим редактирования
+                  {t("admin.subtitle")}
                 </p>
               </div>
             </CardContent>
@@ -108,10 +106,15 @@ export default function Layout() {
             })}
         </nav>
 
+        {/* Переключатель языка */}
+        <div className="mb-4">
+          <LanguageSwitcher />
+        </div>
+
         {/* Кнопка выхода */}
         <Button variant="outline" className="mt-4" onClick={handleLogout}>
           <LogOut className="h-4 w-4 mr-2" />
-          Завершить сеанс
+          {t("nav.logout")}
         </Button>
       </aside>
 

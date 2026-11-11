@@ -16,7 +16,6 @@ import type { Attempt, AttemptQuestion, AttemptResult } from '@/types/attempt';
 export default function TestTakingPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const currentUser = useAuthStore((s) => s.currentUser);
 
   // Store состояния теста
   const {
@@ -37,6 +36,9 @@ export default function TestTakingPage() {
     reset,
   } = useTestStore();
 
+  // ✅ ИСПРАВЛЕНО: Получаем currentUser и isAdmin ОДНИМ вызовом
+  const { currentUser, isAdmin } = useAuthStore();
+
   // Локальное состояние
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,31 +55,38 @@ export default function TestTakingPage() {
 
   // Загрузка теста при монтировании
   useEffect(() => {
-    if (!id || !currentUser) return;
-
+    if (!id) return;
+    
     let mounted = true;
-
     const loadTest = async () => {
       try {
-        // СТАЛО:
+        let userId = currentUser?.id;
+        
+        // Если админ без currentUser — получаем/создаём админ-пользователя
+        if (!userId && isAdmin) {
+          userId = await invoke<number>('get_or_create_admin_user');
+        }
+        
+        if (!userId) {
+          if (mounted) setError('Не удалось определить пользователя');
+          return;
+        }
+        
         const [attemptData, questionsData, timeLimit] = await invoke<[Attempt, AttemptQuestion[], number | null]>(
           'start_attempt',
-          { userId: currentUser.id, testId: parseInt(id) }
+          { userId, testId: parseInt(id) }
         );
-
+        
+        if (!mounted) return;
+        
         setAttempt(attemptData);
         setQuestions(questionsData);
-
-        // Если в тесте задан лимит времени (в минутах), переводим его в секунды для таймера
+        
         if (timeLimit !== null) {
           setTestTimeLimit(timeLimit * 60);
         }
-
+        
         startQuestionTimer();
-
-        // Получаем лимит времени из attempt (если есть)
-        // Пока что его нет в модели — можно получить отдельным запросом
-        // Для MVP оставим null (без лимита), если не задан
       } catch (e) {
         if (mounted) {
           setError(String(e));
@@ -88,13 +97,10 @@ export default function TestTakingPage() {
         }
       }
     };
-
+    
     loadTest();
-
-    return () => {
-      mounted = false;
-    };
-  }, [id, currentUser]);
+    return () => { mounted = false; };
+  }, [id, currentUser, isAdmin]); // <-- isAdmin добавлен в зависимости
 
   // Горячие клавиши
   useEffect(() => {

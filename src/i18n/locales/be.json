@@ -1,0 +1,334 @@
+{
+  "app": {
+    "title": "СМІС Тэсціраванне",
+    "subtitle": "Кафедра СМІС БНТУ"
+  },
+  "nav": {
+    "tests": "Бібліятэка тэстаў",
+    "analytics": "Аналітыка",
+    "editor": "Рэдактар",
+    "settings": "Налады",
+    "logout": "Завяршыць сеанс"
+  },
+  "login": {
+    "title": "Уваход у сістэму",
+    "subtitle": "СМІС-Тэсціраванне · Кафедра СМІС БНТУ",
+    "fullName": "ПІБ",
+    "fullNamePlaceholder": "Іваноў Іван Іванавіч",
+    "group": "Група",
+    "customGroup": "Іншая група…",
+    "customGroupPlaceholder": "Увядзіце групу, напрыклад ІС-25",
+    "submit": "Увайсці",
+    "submitting": "Уваход…",
+    "recentUsers": "Апошнія карыстальнікі",
+    "noRecentUsers": "Пакуль нікога няма — вы будзеце першым!",
+    "loading": "Загрузка…",
+    "teacherMode": "Рэжым выкладчыка",
+    "errors": {
+      "fullNameTooShort": "Увядзіце ПІБ цалкам (мінімум 3 сімвалы)",
+      "groupEmpty": "Абярыце групу або ўвядзіце сваю"
+    }
+  },
+  "editorLogin": {
+    "title": "Уваход для выкладчыка",
+    "subtitle": "Увядзіце пароль для доступу да рэдактара тэстаў",
+    "password": "Пароль",
+    "passwordPlaceholder": "Увядзіце пароль",
+    "submit": "Увайсці",
+    "submitting": "Праверка...",
+    "showPassword": "Паказаць пароль",
+    "hidePassword": "Схаваць пароль",
+    "defaultPassword": "Пароль па змаўчанні",
+    "wrongPassword": "Няправільны пароль"
+  },
+  "admin": {
+    "title": "Адміністратар",
+    "subtitle": "Рэжым рэдагавання"
+  },
+  "tests": {
+    "title": "Бібліятэка тэстаў",
+    "subtitle": "Абярыце тэст для праходжання",
+    "searchPlaceholder": "Пошук па назве...",
+    "allDisciplines": "Усе дысцыпліны",
+    "sortByDate": "Па даце ↓",
+    "sortByTitle": "Па назве А-Я",
+    "sortByDifficulty": "Па складанасці ↑",
+    "noTests": "Няма даступных тэстаў",
+    "noTestsHint": "Паспрабуйце змяніць фільтры",
+    "noTestsHintDefault": "Звярніцеся да выкладчыка",
+    "questions": "пыт.",
+    "noLimit": "Без ліміту",
+    "min": "хвіл",
+    "shuffleQuestions": "Пытанні перамешваюцца",
+    "shuffleAnswers": "Адказы перамешваюцца",
+    "difficulty": {
+      "easy": "Лёгкі",
+      "medium": "Сярэдні",
+      "hard": "Складаны"
+    }
+  },
+  "testTaking": {
+    "loading": "Загрузка тэста...",
+    "hotkeys": "Гарачыя клавішы",
+    "selectAnswer": "выбар адказу",
+    "next": "далей",
+    "prev": "назад",
+    "back": "Назад",
+    "nextBtn": "Далей",
+    "finish": "Завяршыць тэст",
+    "finishConfirm": {
+      "title": "Завяршыць тэст?",
+      "answered": "Вы адказалі на {{count}} з {{total}} пытанняў.",
+      "warning": "⚠️ Засталіся пытанні без адказу — яны будуць залічаны як няправільныя.",
+      "continue": "Працягнуць тэст",
+      "finish": "Завяршыць",
+      "finishing": "Завяршэнне..."
+    }
+  },
+  "result": {
+    "title": "Вынік тэсціравання",
+    "loading": "Загрузка выніку...",
+    "error": "Памылка загрузкі выніку",
+    "backToLibrary": "Вярнуцца да бібліятэкі",
+    "timeSpent": "Час праходжання",
+    "retry": "Пройсці яшчэ раз",
+    "logout": "Завяршыць сеанс",
+    "review": "Разбор адказаў",
+    "question": "Пытанне",
+    "yourAnswer": "Ваш адказ",
+    "correctAnswer": "Правільны адказ",
+    "notAnswered": "Не адказана",
+    "explanation": "Тлумачэнне",
+    "grades": {
+      "excellent": "Выдатна!",
+      "good": "Добра",
+      "satisfactory": "Задавальняюча",
+      "needsWork": "Трэба падцягнуць"
+    }
+  },
+  "editor": {
+    "title": "Рэдактар тэстаў",
+    "subtitle": "Кіраванне тэстамі і пытаннямі",
+    "createTest": "Стварыць тэст",
+    "createTestTitle": "Стварыць тэст",
+    "editTestTitle": "Рэдагаваць тэст",
+    "createTestSubtitle": "Запоўніце інфармацыю пра новы тэст",
+    "editTestSubtitle": "Змяніце параметры тэста",
+    "noTests": "Няма тэстаў. Стварыце першы тэст!",
+    "columns": {
+      "title": "Назва",
+      "discipline": "Дысцыпліна",
+      "questions": "Пытанняў",
+      "time": "Час",
+      "shuffle": "Перамешванне",
+      "actions": "Дзеянні"
+    },
+    "fields": {
+      "title": "Назва",
+      "titlePlaceholder": "Увядзіце назву тэста",
+      "description": "Апісанне",
+      "descriptionPlaceholder": "Апісанне тэста (неабавязкова)",
+      "discipline": "Дысцыпліна",
+      "disciplinePlaceholder": "Абярыце дысцыпліну",
+      "timeLimit": "Ліміт часу (хвіліны)",
+      "timeLimitPlaceholder": "Пакіньце пустым для бязліміту",
+      "questionCount": "Колькасць пытанняў",
+      "questionCountPlaceholder": "Пакіньце пустым для ўсіх пытанняў",
+      "shuffleQuestions": "Перамешваць пытанні",
+      "shuffleAnswers": "Перамешваць адказы"
+    },
+    "actions": {
+      "editQuestions": "Рэдагаваць пытанні",
+      "editTest": "Рэдагаваць тэст",
+      "duplicate": "Дубліраваць тэст",
+      "delete": "Выдаліць тэст"
+    },
+    "errors": {
+      "titleEmpty": "Назва тэста не можа быць пустой",
+      "disciplineEmpty": "Абярыце дысцыпліну"
+    },
+    "buttons": {
+      "cancel": "Адмяніць",
+      "save": "Захаваць",
+      "create": "Стварыць",
+      "saving": "Захаванне...",
+      "delete": "Выдаліць",
+      "deleting": "Выдаленне..."
+    },
+    "deleteConfirm": {
+      "title": "Выдаліць тэст?",
+      "description": "Гэта дзеянне нельга адмяніць. Усе сувязі з пытаннямі будуць выдалены."
+    }
+  },
+  "editorTest": {
+    "title": "Рэдактар пытанняў",
+    "subtitle": "Тэст #{{testId}} · {{count}} пытанняў",
+    "addQuestion": "Дадаць пытанне",
+    "noQuestions": "Няма пытанняў. Дадайце першае пытанне!",
+    "createTitle": "Дадаць пытанне",
+    "editTitle": "Рэдагаваць пытанне",
+    "createSubtitle": "Запоўніце інфармацыю пра новае пытанне",
+    "editSubtitle": "Змяніце тэкст пытання і варыянты адказаў",
+    "fields": {
+      "image": "Выява пытання",
+      "imageOptional": "Выява пытання (неабавязкова)",
+      "text": "Тэкст пытання",
+      "textPlaceholder": "Увядзіце тэкст пытання",
+      "explanation": "Тлумачэнне",
+      "explanationOptional": "Тлумачэнне (неабавязкова)",
+      "explanationPlaceholder": "Тлумачэнне будзе паказана пасля адказу",
+      "difficulty": "Складанасць",
+      "answers": "Варыянты адказаў",
+      "answersHint": "Варыянты адказаў * (мінімум 2, максімум 6)",
+      "answerPlaceholder": "Варыянт {{letter}}"
+    },
+    "buttons": {
+      "addAnswer": "Дадаць варыянт"
+    },
+    "errors": {
+      "textEmpty": "Тэкст пытання не можа быць пустым",
+      "minAnswers": "Трэба мінімум 2 варыянты адказу",
+      "noCorrect": "Трэба адзначыць хаця б адзін правільны адказ",
+      "emptyAnswers": "Усе варыянты адказу павінны быць запоўнены"
+    },
+    "deleteConfirm": {
+      "title": "Выдаліць пытанне?",
+      "description": "Гэта дзеянне нельга адмяніць. Пытанне будзе выдалена з усіх тэстаў."
+    }
+  },
+  "analytics": {
+    "title": "Аналітыка",
+    "subtitle": "Агляд вынікаў тэсціравання студэнтаў",
+    "filters": {
+      "group": "Група",
+      "groupPlaceholder": "Напрыклад: ІС-23",
+      "dateFrom": "Дата ад",
+      "dateTo": "Дата да",
+      "sortBy": "Сартаванне",
+      "byDate": "Па даце",
+      "byResult": "Па выніку",
+      "byName": "Па імені",
+      "byTest": "Па тэсце",
+      "desc": "↓ Спад.",
+      "asc": "↑ Узр.",
+      "apply": "Ужыць"
+    },
+    "columns": {
+      "student": "Студэнт / Група",
+      "test": "Тэст",
+      "date": "Дата",
+      "result": "Вынік",
+      "time": "Час",
+      "actions": "Дзеянні"
+    },
+    "noAttempts": "Спробаў не знойдзена",
+    "inProgress": "У працэсе",
+    "min": "хвіл",
+    "details": {
+      "title": "Дэталі спробы #{{id}}",
+      "student": "Студэнт",
+      "test": "Тэст",
+      "result": "Вынік",
+      "time": "Час",
+      "min": "хвіл",
+      "sec": "сек",
+      "review": "Разбор адказаў",
+      "question": "Пытанне",
+      "studentAnswer": "Адказ студэнта",
+      "correctAnswer": "Правільны адказ",
+      "notAnswered": "Не адказана",
+      "explanation": "Тлумачэнне",
+      "timePerQuestion": "Час на пытанне"
+    },
+    "clearHistory": {
+      "button": "Ачысціць гісторыю",
+      "title": "Ачысціць усю гісторыю?",
+      "description": "Гэта дзеянне выдаліць усе запісы пра спробы праходжання тэстаў.",
+      "willBeDeleted": "⚠️ Будуць выдалены:",
+      "deletedList": "Усе спробы праходжання тэстаў;Усе адказы студэнтаў;Уся статыстыка і вынікі",
+      "willRemain": "✅ Застанецца без змен:",
+      "remainList": "Усе тэсты;Усе пытанні і варыянты адказаў;Усе карыстальнікі;Налады прыкладання",
+      "cancel": "Адмяніць",
+      "deleteAll": "Выдаліць усё",
+      "deleting": "Выдаленне..."
+    },
+    "export": {
+      "csv": "Экспарт CSV",
+      "json": "Экспарт JSON",
+      "pdf": "Экспарт PDF",
+      "pdfAttempt": "PDF спробы",
+      "saved": "Файл захаваны:",
+      "pdfSaved": "PDF захаваны:"
+    }
+  },
+  "settings": {
+    "title": "Налады",
+    "subtitle": "Кіраванне знешнім выглядам і бяспекай прыкладання",
+    "appearance": {
+      "title": "Знешні выгляд",
+      "description": "Наладзьце каляровую схему і тыпаграфіку прыкладання",
+      "accentColor": "Акцэнтны колер",
+      "fontSize": "Памер шрыфта",
+      "fontFamily": "Сямейства шрыфтоў",
+      "fontSizes": {
+        "small": "Дробны (14px)",
+        "medium": "Сярэдні (16px)",
+        "large": "Буйны (18px)",
+        "xlarge": "Вельмі буйны (20px)"
+      },
+      "fontFamilies": {
+        "system": "Сістэмны (па змаўчанні)",
+        "sans": "Без засечак (Sans-serif)",
+        "serif": "З засечкамі (Serif)",
+        "mono": "Монашырынны (Monospace)"
+      },
+      "save": "Захаваць знешні выгляд"
+    },
+    "language": {
+      "title": "Мова / Язык / Language",
+      "description": "Абярыце мову інтэрфейсу прыкладання"
+    },
+    "security": {
+      "title": "Бяспека",
+      "description": "Змяненне пароля для ўваходу ў рэжым выкладчыка",
+      "oldPassword": "Бягучы пароль",
+      "newPassword": "Новы пароль",
+      "confirmPassword": "Пацвердзіце новы пароль",
+      "changePassword": "Змяніць пароль",
+      "changing": "Змяненне...",
+      "errors": {
+        "tooShort": "Новы пароль павінен быць не карацей за 6 сімвалаў",
+        "mismatch": "Паролі не супадаюць"
+      }
+    },
+    "about": {
+      "title": "Пра прыкладанне",
+      "name": "Назва",
+      "version": "Версія",
+      "developer": "Распрацоўшчык",
+      "stack": "Стэк",
+      "copyright": "© 2026 Кафедра СМІС БНТУ. Усе правы абаронены."
+    },
+    "messages": {
+      "saved": "Налады паспяхова захаваны!",
+      "passwordChanged": "Пароль адміністратара паспяхова зменены!"
+    }
+  },
+  "common": {
+    "loading": "Загрузка...",
+    "error": "Памылка",
+    "retry": "Паўтарыць",
+    "cancel": "Адмяніць",
+    "save": "Захаваць",
+    "delete": "Выдаліць",
+    "edit": "Рэдагаваць",
+    "create": "Стварыць",
+    "close": "Зачыніць",
+    "confirm": "Пацвердзіць",
+    "yes": "Так",
+    "no": "Не",
+    "or": "або",
+    "optional": "неабавязкова",
+    "required": "абавязкова"
+  }
+}
