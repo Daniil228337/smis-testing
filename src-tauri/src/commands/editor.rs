@@ -114,14 +114,23 @@ pub async fn delete_test(
     state: State<'_, AppState>,
     test_id: i64,
 ) -> Result<(), String> {
+    // 1. Сначала удаляем все попытки этого теста
+    // (attempt_answers удалятся автоматически через ON DELETE CASCADE)
+    sqlx::query("DELETE FROM attempts WHERE test_id = ?1")
+        .bind(test_id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // 2. Теперь безопасно удаляем сам тест
+    // (test_questions и tickets удалятся через ON DELETE CASCADE)
     sqlx::query("DELETE FROM tests WHERE id = ?1")
         .bind(test_id)
         .execute(&state.db)
         .await
         .map_err(|e| e.to_string())?;
 
-    log::info!("✅ Удалён тест #{}", test_id);
-
+    log::info!("✅ Удалён тест #{} и все связанные попытки", test_id);
     Ok(())
 }
 

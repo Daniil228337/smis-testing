@@ -4,7 +4,7 @@ use tauri::Manager;
 use crate::db::{create_pool, run_migrations};
 
 use crate::commands::db::{check_db, get_db_info};
-use crate::commands::user::{create_user, get_recent_users}; 
+use crate::commands::user::{create_user, get_recent_users, get_or_create_admin_user};
 
 use crate::commands::test::{get_all_tests, get_all_disciplines};
 use crate::commands::attempt::{start_attempt, save_answer, finish_attempt, get_attempt_result};
@@ -89,6 +89,7 @@ pub fn run() {
             get_db_info,
             create_user,
             get_recent_users,
+            get_or_create_admin_user,
             get_setting,
             set_setting,
             get_all_tests,
