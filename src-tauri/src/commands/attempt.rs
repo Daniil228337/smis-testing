@@ -41,7 +41,7 @@ pub struct AttemptQuestionReview {
 }
 
 /// Запуск новой попытки прохождения теста.
-/// Запуск новой попытки прохождения теста.
+/// Если уже есть незавершённая попытка — продолжаем её (не создаём новую).
 #[tauri::command]
 pub async fn start_attempt(
     state: State<'_, AppState>,
@@ -61,64 +61,48 @@ pub async fn start_attempt(
     let (time_limit, shuffle_questions, shuffle_answers, question_count, use_tickets) =
         test_row.ok_or_else(|| "Тест не найден".to_string())?;
 
-    // 2. Используем транзакцию для атомарности (защита от React.StrictMode)
-    let mut tx = state.db.begin().await.map_err(|e| e.to_string())?;
-
-    // 2a. Проверяем на существующую in_progress попытку ВНУТРИ транзакции
-    let existing_in_progress: Option<(i64,)> = sqlx::query_as(
-        "SELECT id FROM attempts 
-         WHERE user_id = ?1 AND test_id = ?2 AND status = 'in_progress'"
-    )
-    .bind(user_id)
-    .bind(test_id)
-    .fetch_optional(&mut *tx)
-    .await
-    .map_err(|e| e.to_string())?;
-
-    if let Some((old_attempt_id,)) = existing_in_progress {
-        log::warn!("⚠️ Найдена незавершённая попытка #{}. Удаляем...", old_attempt_id);
-        
-        // Удаляем ответы старой попытки
-        sqlx::query("DELETE FROM attempt_answers WHERE attempt_id = ?1")
-            .bind(old_attempt_id)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| e.to_string())?;
-        
-        // Удаляем саму попытку
-        sqlx::query("DELETE FROM attempts WHERE id = ?1")
-            .bind(old_attempt_id)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| e.to_string())?;
-    }
-
-    // 3. Создаём новую попытку (теперь это безопасно)
-    let result = sqlx::query(
-        "INSERT INTO attempts (user_id, test_id, status) VALUES (?1, ?2, 'in_progress')"
-    )
-    .bind(user_id)
-    .bind(test_id)
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| e.to_string())?;
-    
-    let attempt_id = result.last_insert_rowid();
-
-    // Коммитим транзакцию
-    tx.commit().await.map_err(|e| e.to_string())?;
-
-    // 4. Получаем полную запись Attempt
-    let attempt: Attempt = sqlx::query_as(
+    // 2. Проверяем, есть ли уже незавершённая попытка
+    let existing_attempt: Option<Attempt> = sqlx::query_as(
         "SELECT id, user_id, test_id, started_at, finished_at, score, max_score, duration_seconds, status
-         FROM attempts WHERE id = ?1"
+         FROM attempts WHERE user_id = ?1 AND test_id = ?2 AND status = 'in_progress'"
     )
-    .bind(attempt_id)
-    .fetch_one(&state.db)
+    .bind(user_id)
+    .bind(test_id)
+    .fetch_optional(&state.db)
     .await
     .map_err(|e| e.to_string())?;
 
-    // 5. Получаем вопросы (в зависимости от use_tickets)
+    let attempt = if let Some(existing) = existing_attempt {
+        // ✅ Продолжаем существующую попытку
+        log::info!("♻️ Продолжаем существующую попытку #{}", existing.id);
+        existing
+    } else {
+        // ✅ Создаём новую попытку
+        let result = sqlx::query(
+            "INSERT INTO attempts (user_id, test_id, status) VALUES (?1, ?2, 'in_progress')"
+        )
+        .bind(user_id)
+        .bind(test_id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| e.to_string())?;
+        
+        let attempt_id = result.last_insert_rowid();
+
+        let new_attempt: Attempt = sqlx::query_as(
+            "SELECT id, user_id, test_id, started_at, finished_at, score, max_score, duration_seconds, status
+             FROM attempts WHERE id = ?1"
+        )
+        .bind(attempt_id)
+        .fetch_one(&state.db)
+        .await
+        .map_err(|e| e.to_string())?;
+        
+        log::info!("🆕 Создана новая попытка #{}", new_attempt.id);
+        new_attempt
+    };
+
+    // 3. Получаем вопросы в зависимости от режима
     let mut questions_with_answers: Vec<QuestionWithAnswers> = Vec::new();
 
     if use_tickets == 1 {
@@ -233,7 +217,7 @@ pub async fn start_attempt(
     // ==========================================
     let mut rng = rand::thread_rng();
 
-    // 6. Перемешиваем и ограничиваем вопросы
+    // 4. Перемешиваем вопросы и ограничиваем количество
     if use_tickets == 1 {
         if shuffle_questions == 1 {
             questions_with_answers.shuffle(&mut rng);
@@ -249,7 +233,7 @@ pub async fn start_attempt(
         }
     }
 
-    // 7. Формируем результат для фронтенда
+    // 5. Формируем результат для фронтенда
     let mut attempt_questions: Vec<AttemptQuestion> = Vec::new();
     
     for q in questions_with_answers {
@@ -277,7 +261,7 @@ pub async fn start_attempt(
     }
 
     log::info!(
-        "✅ Начата попытка #{} для теста #{} (вопросов: {}, shuffle_q: {}, shuffle_a: {}, use_tickets: {})",
+        "✅ Попытка #{} для теста #{} (вопросов: {}, shuffle_q: {}, shuffle_a: {}, use_tickets: {})",
         attempt.id, test_id, attempt_questions.len(), shuffle_questions, shuffle_answers, use_tickets
     );
     
@@ -423,6 +407,33 @@ pub async fn finish_attempt(
     )
     .bind(score)
     .bind(max_score)
+    .bind(attempt_id)
+    .execute(&state.db)
+    .await
+    .map_err(|e| e.to_string())?;
+
+        // ✅ НОВОЕ: Удаляем все другие in_progress попытки для этого пользователя и теста
+    sqlx::query(
+        "DELETE FROM attempt_answers WHERE attempt_id IN (
+            SELECT id FROM attempts 
+            WHERE user_id = (SELECT user_id FROM attempts WHERE id = ?1) 
+            AND test_id = (SELECT test_id FROM attempts WHERE id = ?1) 
+            AND status = 'in_progress' 
+            AND id != ?1
+        )"
+    )
+    .bind(attempt_id)
+    .execute(&state.db)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    sqlx::query(
+        "DELETE FROM attempts 
+         WHERE user_id = (SELECT user_id FROM attempts WHERE id = ?1) 
+         AND test_id = (SELECT test_id FROM attempts WHERE id = ?1) 
+         AND status = 'in_progress' 
+         AND id != ?1"
+    )
     .bind(attempt_id)
     .execute(&state.db)
     .await

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Search, Filter, Eye, Loader2, AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { Search, Filter, Eye, Loader2, AlertCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import ExportAttemptsPdf from "@/components/analytics/ExportPdf";
-import { useTranslation } from "react-i18next";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -21,7 +22,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+import ExportAttemptsPdf from "@/components/analytics/ExportPdf";
 import ClearHistory from "@/components/analytics/ClearHistory";
 import ExportAttempts from "@/components/analytics/ExportAttempts";
 import AttemptDetailsModal from "@/components/analytics/AttemptDetailsModal";
@@ -55,6 +65,42 @@ export default function AnalyticsPage() {
   const [sortBy, setSortBy] = useState("date");
   const [sortOrder, setSortOrder] = useState("desc");
 
+  // Удаление выбранных
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === attempts.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(attempts.map((a) => a.id));
+    }
+  };
+
+  const toggleSelectOne = (id: number) => {
+    if (selectedIds.includes(id)) {
+      setSelectedIds(selectedIds.filter((selectedId) => selectedId !== id));
+    } else {
+      setSelectedIds([...selectedIds, id]);
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    setIsDeleting(true);
+    try {
+      await invoke("delete_attempts", { attemptIds: selectedIds });
+      setSelectedIds([]);
+      setIsDeleteDialogOpen(false);
+      await loadAttempts();
+    } catch (e) {
+      console.error("Ошибка удаления:", e);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const loadAttempts = async () => {
     setLoading(true);
     setError(null);
@@ -81,11 +127,11 @@ export default function AnalyticsPage() {
   useEffect(() => {
     loadAttempts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortBy, sortOrder]); // Перезагружаем при смене сортировки
+  }, [sortBy, sortOrder]);
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleString("ru-RU", {
+    return new Date(dateStr).toLocaleString(t('analytics.locale') || "ru-RU", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -102,16 +148,24 @@ export default function AnalyticsPage() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Заголовок и кнопки действий */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">{t('analytics.title')}</h1>
-          <p className="text-muted-foreground mt-1">
-            {t('analytics.subtitle')}
-          </p>
+          <p className="text-muted-foreground mt-1">{t('analytics.subtitle')}</p>
         </div>
 
         <div className="flex flex-col items-end gap-3">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {selectedIds.length > 0 && (
+              <Button 
+                variant="destructive" 
+                onClick={() => setIsDeleteDialogOpen(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {t('analytics.deleteSelected', { count: selectedIds.length })}
+              </Button>
+            )}
             <ExportAttempts attempts={attempts} />
             <ExportAttemptsPdf attempts={attempts} />
             <ClearHistory onClearComplete={loadAttempts} />
@@ -162,7 +216,7 @@ export default function AnalyticsPage() {
               </Select>
               <Button onClick={loadAttempts} className="shrink-0">
                 <Filter className="mr-2 h-4 w-4" />
-                  {t('analytics.filters.apply')}
+                {t('analytics.filters.apply')}
               </Button>
             </div>
           </div>
@@ -190,6 +244,13 @@ export default function AnalyticsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={attempts.length > 0 && selectedIds.length === attempts.length}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label={t('analytics.selectAll')}
+                    />
+                  </TableHead>
                   <TableHead>{t('analytics.columns.student')}</TableHead>
                   <TableHead>{t('analytics.columns.test')}</TableHead>
                   <TableHead className="text-center">{t('analytics.columns.date')}</TableHead>
@@ -200,7 +261,18 @@ export default function AnalyticsPage() {
               </TableHeader>
               <TableBody>
                 {attempts.map((attempt) => (
-                  <TableRow key={attempt.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedAttemptId(attempt.id)}>
+                  <TableRow 
+                    key={attempt.id} 
+                    className="cursor-pointer hover:bg-muted/50" 
+                    onClick={() => setSelectedAttemptId(attempt.id)}
+                  >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedIds.includes(attempt.id)}
+                        onCheckedChange={() => toggleSelectOne(attempt.id)}
+                        aria-label={`${t('analytics.selectAttempt')} ${attempt.id}`}
+                      />
+                    </TableCell>
                     <TableCell>
                       <p className="font-medium">{attempt.userName}</p>
                       <p className="text-sm text-muted-foreground">{attempt.groupName}</p>
@@ -239,6 +311,47 @@ export default function AnalyticsPage() {
         attemptId={selectedAttemptId} 
         onClose={() => setSelectedAttemptId(null)} 
       />
+
+      {/* ✅ ДОБАВЛЕНО: Диалог подтверждения удаления выбранных */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              {t('analytics.deleteConfirm.title')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('analytics.deleteConfirm.description', { count: selectedIds.length })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              {t('analytics.deleteConfirm.cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteSelected}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t('analytics.deleteConfirm.deleting')}
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {t('analytics.deleteConfirm.delete')}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -156,8 +156,11 @@
       "deleting": "Deleting..."
     },
     "deleteConfirm": {
-      "title": "Delete test?",
-      "description": "This action cannot be undone. All question associations will be removed."
+      "title": "Delete selected attempts?",
+      "description": "You are about to delete {{count}} records. This action cannot be undone.",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleting": "Deleting..."
     }
   },
   "editorTest": {
@@ -199,6 +202,10 @@
   "analytics": {
     "title": "Analytics",
     "subtitle": "Overview of student test results",
+    "locale": "en-US",
+    "selectAll": "Select all",
+    "selectAttempt": "Select attempt",
+    "deleteSelected": "Delete selected ({{count}})",
     "filters": {
       "group": "Group",
       "groupPlaceholder": "e.g. IS-23",

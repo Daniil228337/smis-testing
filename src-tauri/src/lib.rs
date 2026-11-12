@@ -10,7 +10,7 @@ use crate::commands::test::{get_all_tests, get_all_disciplines};
 use crate::commands::attempt::{start_attempt, save_answer, finish_attempt, get_attempt_result};
 use crate::commands::editor::{get_all_tests_for_editor, create_test, update_test, delete_test, duplicate_test};
 use crate::commands::question::{get_test_questions, create_question, update_question, delete_question, duplicate_question, upload_image, delete_image, reorder_questions};
-use crate::commands::analytics::{get_all_attempts, get_attempt_details, clear_all_attempts};
+use crate::commands::analytics::{get_all_attempts, get_attempt_details, clear_all_attempts, delete_attempts};
 use crate::commands::import::import_questions_from_excel;
 use crate::commands::settings::{get_setting, set_setting, get_all_settings, update_settings, get_uploads_dir_path};
 use crate::commands::admin::{init_admin_password, verify_admin_password, change_admin_password};
@@ -119,6 +119,7 @@ pub fn run() {
             get_all_attempts,
             get_attempt_details,
             clear_all_attempts,
+            delete_attempts,
             get_uploads_dir_path,
             save_export_file,
             save_pdf,

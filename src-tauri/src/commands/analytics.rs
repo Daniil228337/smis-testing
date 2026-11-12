@@ -244,3 +244,36 @@ pub async fn clear_all_attempts(
     log::info!("🗑️ История попыток полностью очищена");
     Ok(())
 }
+
+/// Удалить конкретные попытки по их ID
+#[tauri::command]
+pub async fn delete_attempts(
+    state: State<'_, AppState>,
+    attempt_ids: Vec<i64>,
+) -> Result<(), String> {
+    if attempt_ids.is_empty() {
+        return Ok(());
+    }
+
+    // ✅ ИСПРАВЛЕНИЕ: Сохраняем количество ДО того, как вектор будет потреблён циклом
+    let count = attempt_ids.len();
+
+    // Используем транзакцию для атомарности
+    let mut tx = state.db.begin().await.map_err(|e| e.to_string())?;
+
+    for id in attempt_ids {
+        // Благодаря ON DELETE CASCADE в attempt_answers, 
+        // удаление из attempts автоматически удалит и ответы
+        sqlx::query("DELETE FROM attempts WHERE id = ?1")
+            .bind(id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+    
+    // ✅ ИСПРАВЛЕНИЕ: Используем сохранённую переменную count
+    log::info!("🗑️ Удалено {} выбранных попыток", count);
+    Ok(())
+}
