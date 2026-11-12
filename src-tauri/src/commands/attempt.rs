@@ -41,13 +41,14 @@ pub struct AttemptQuestionReview {
 }
 
 /// Запуск новой попытки прохождения теста.
+/// Запуск новой попытки прохождения теста.
 #[tauri::command]
 pub async fn start_attempt(
     state: State<'_, AppState>,
     user_id: i64,
     test_id: i64,
 ) -> Result<(Attempt, Vec<AttemptQuestion>, Option<i32>), String> {
-    // 1. Получаем настройки теста (теперь включая use_tickets)
+    // 1. Получаем настройки теста
     let test_row: Option<(Option<i32>, i32, i32, Option<i32>, i32)> = sqlx::query_as(
         "SELECT time_limit_minutes, shuffle_questions, shuffle_answers, question_count, use_tickets
          FROM tests WHERE id = ?1"
@@ -56,23 +57,58 @@ pub async fn start_attempt(
     .fetch_optional(&state.db)
     .await
     .map_err(|e| e.to_string())?;
-    
+
     let (time_limit, shuffle_questions, shuffle_answers, question_count, use_tickets) =
         test_row.ok_or_else(|| "Тест не найден".to_string())?;
 
-    // 2. Создаём запись о попытке
+    // 2. Используем транзакцию для атомарности (защита от React.StrictMode)
+    let mut tx = state.db.begin().await.map_err(|e| e.to_string())?;
+
+    // 2a. Проверяем на существующую in_progress попытку ВНУТРИ транзакции
+    let existing_in_progress: Option<(i64,)> = sqlx::query_as(
+        "SELECT id FROM attempts 
+         WHERE user_id = ?1 AND test_id = ?2 AND status = 'in_progress'"
+    )
+    .bind(user_id)
+    .bind(test_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    if let Some((old_attempt_id,)) = existing_in_progress {
+        log::warn!("⚠️ Найдена незавершённая попытка #{}. Удаляем...", old_attempt_id);
+        
+        // Удаляем ответы старой попытки
+        sqlx::query("DELETE FROM attempt_answers WHERE attempt_id = ?1")
+            .bind(old_attempt_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| e.to_string())?;
+        
+        // Удаляем саму попытку
+        sqlx::query("DELETE FROM attempts WHERE id = ?1")
+            .bind(old_attempt_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+
+    // 3. Создаём новую попытку (теперь это безопасно)
     let result = sqlx::query(
         "INSERT INTO attempts (user_id, test_id, status) VALUES (?1, ?2, 'in_progress')"
     )
     .bind(user_id)
     .bind(test_id)
-    .execute(&state.db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| e.to_string())?;
     
     let attempt_id = result.last_insert_rowid();
 
-    // 2a. СРАЗУ получаем полную запись Attempt, чтобы не держать rng через await позже!
+    // Коммитим транзакцию
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    // 4. Получаем полную запись Attempt
     let attempt: Attempt = sqlx::query_as(
         "SELECT id, user_id, test_id, started_at, finished_at, score, max_score, duration_seconds, status
          FROM attempts WHERE id = ?1"
@@ -82,7 +118,7 @@ pub async fn start_attempt(
     .await
     .map_err(|e| e.to_string())?;
 
-    // 3. Получаем вопросы в зависимости от режима (use_tickets)
+    // 5. Получаем вопросы (в зависимости от use_tickets)
     let mut questions_with_answers: Vec<QuestionWithAnswers> = Vec::new();
 
     if use_tickets == 1 {
@@ -99,7 +135,6 @@ pub async fn start_attempt(
             return Err("В тесте включён режим билетов, но билеты не созданы".to_string());
         }
 
-        // Выбираем случайный билет (rng создаётся в ограниченной области видимости и сразу уничтожается)
         let selected_ticket_id = {
             let mut rng = rand::thread_rng();
             let selected = tickets.choose(&mut rng)
@@ -107,7 +142,6 @@ pub async fn start_attempt(
             selected.0
         };
 
-        // Получаем вопросы ТОЛЬКО из выбранного билета
         let question_rows: Vec<(i64, String, Option<String>, Option<String>, i64)> = sqlx::query_as(
             r#"
             SELECT q.id, q.text, q.image_path, q.explanation, q.difficulty
@@ -151,7 +185,7 @@ pub async fn start_attempt(
             });
         }
     } else {
-        // === ОБЫЧНЫЙ РЕЖИМ (как было раньше) ===
+        // === ОБЫЧНЫЙ РЕЖИМ ===
         let question_rows: Vec<(i64, String, Option<String>, Option<String>, i64)> = sqlx::query_as(
             "SELECT q.id, q.text, q.image_path, q.explanation, q.difficulty
              FROM questions q
@@ -196,19 +230,15 @@ pub async fn start_attempt(
 
     // ==========================================
     // ВСЕ .await ВЫЗОВЫ ЗАВЕРШЕНЫ ВЫШЕ!
-    // Теперь можно безопасно создавать thread_rng() для перемешивания
     // ==========================================
     let mut rng = rand::thread_rng();
 
-    // 4. Перемешиваем вопросы и ограничиваем количество (в зависимости от режима)
+    // 6. Перемешиваем и ограничиваем вопросы
     if use_tickets == 1 {
-        // В режиме билетов перемешиваем вопросы внутри билета, если включено
         if shuffle_questions == 1 {
             questions_with_answers.shuffle(&mut rng);
         }
-        // Примечание: question_count игнорируется для билетов, так как билет — это фиксированный набор
     } else {
-        // В обычном режиме применяем старые правила
         if shuffle_questions == 1 {
             questions_with_answers.shuffle(&mut rng);
         }
@@ -219,7 +249,7 @@ pub async fn start_attempt(
         }
     }
 
-    // 5. Формируем результат для фронтенда (БЕЗ is_correct!)
+    // 7. Формируем результат для фронтенда
     let mut attempt_questions: Vec<AttemptQuestion> = Vec::new();
     
     for q in questions_with_answers {
@@ -232,7 +262,6 @@ pub async fn start_attempt(
             })
             .collect();
 
-        // Перемешиваем варианты ответов, если нужно
         if shuffle_answers == 1 {
             answers.shuffle(&mut rng);
         }
@@ -248,7 +277,7 @@ pub async fn start_attempt(
     }
 
     log::info!(
-        "Начата попытка #{} для теста #{} (вопросов: {}, shuffle_q: {}, shuffle_a: {}, use_tickets: {})",
+        "✅ Начата попытка #{} для теста #{} (вопросов: {}, shuffle_q: {}, shuffle_a: {}, use_tickets: {})",
         attempt.id, test_id, attempt_questions.len(), shuffle_questions, shuffle_answers, use_tickets
     );
     
