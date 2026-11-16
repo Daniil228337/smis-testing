@@ -44,10 +44,12 @@ export default function QuestionCard({
           <img
             src={getAssetUrl(question.imagePath, uploadsDir) || ''}
             alt="Иллюстрация к вопросу"
-            className="max-h-64 w-auto rounded-lg border border-border object-contain"
-            onError={(e) => {
-              console.error('Ошибка загрузки картинки:', question.imagePath, 'Путь к uploads:', uploadsDir);
-            }}
+            className="rounded-lg border border-border object-contain"
+            style={
+              question.imageWidth && question.imageHeight
+                ? { width: question.imageWidth, height: question.imageHeight, maxWidth: '100%' }
+                : { maxWidth: '100%', maxHeight: 256 }
+            }
           />
         )}
       </div>

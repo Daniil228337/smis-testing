@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Upload, X } from "lucide-react";
+import { Upload, X, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn, getAssetUrl } from "@/lib/utils";
 import { useAppStore } from "@/store/appStore";
@@ -15,7 +15,29 @@ interface ImageUploadProps {
   label?: string;
 }
 
-/** Читаем реальные пиксельные размеры загруженной картинки */
+const MIN_PX = 50;
+const MAX_PX = 2000;
+
+const PRESETS = [
+  { id: "small", label: "Маленькая", px: 200 },
+  { id: "medium", label: "Средняя", px: 400 },
+  { id: "large", label: "Большая", px: 600 },
+] as const;
+
+type Handle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
+const HANDLES: Handle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+const POS: Record<Handle, { x: number; y: number }> = {
+  nw: { x: 0, y: 0 }, n: { x: 0.5, y: 0 }, ne: { x: 1, y: 0 },
+  e: { x: 1, y: 0.5 }, se: { x: 1, y: 1 }, s: { x: 0.5, y: 1 },
+  sw: { x: 0, y: 1 }, w: { x: 0, y: 0.5 },
+};
+const CURSOR: Record<Handle, string> = {
+  nw: "nwse-resize", se: "nwse-resize", ne: "nesw-resize", sw: "nesw-resize",
+  n: "ns-resize", s: "ns-resize", e: "ew-resize", w: "ew-resize",
+};
+
+const clampPx = (v: number) => Math.max(MIN_PX, Math.min(MAX_PX, Math.round(v)));
+
 function getImageDimensions(src: string): Promise<{ width: number; height: number } | null> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -26,19 +48,61 @@ function getImageDimensions(src: string): Promise<{ width: number; height: numbe
 }
 
 export default function ImageUpload({
-  value,
-  width,
-  height,
-  onChangePath,
-  onChangeWidth,
-  onChangeHeight,
-  label = "Картинка",
+  value, width, height, onChangePath, onChangeWidth, onChangeHeight, label = "Картинка",
 }: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   const uploadsDir = useAppStore((s) => s.uploadsDir);
+
+  const hasSize = !!(width && height);
+
+  const applySize = (w: number, h: number) => {
+    onChangeWidth?.(clampPx(w));
+    onChangeHeight?.(clampPx(h));
+  };
+  const resetSize = () => { onChangeWidth?.(null); onChangeHeight?.(null); };
+
+  const applyPreset = (px: number) => {
+    const rect = imgRef.current?.getBoundingClientRect();
+    const ratio = natural ? natural.w / natural.h : rect ? rect.width / rect.height : 4 / 3;
+    applySize(px, px / ratio);
+  };
+
+  const startDrag = (handle: Handle) => (e: React.PointerEvent) => {
+    e.preventDefault();
+    const rect = imgRef.current?.getBoundingClientRect();
+    const startW = width ?? rect?.width ?? natural?.w ?? 320;
+    const startH = height ?? rect?.height ?? natural?.h ?? 240;
+    const ratio = natural ? natural.w / natural.h : startW / startH;
+    const sx = e.clientX, sy = e.clientY;
+    const isCorner = handle.length === 2;
+
+    const move = (ev: PointerEvent) => {
+      let dx = ev.clientX - sx, dy = ev.clientY - sy;
+      if (handle.includes("w")) dx = -dx;
+      if (handle.includes("n")) dy = -dy;
+      let w = startW, h = startH;
+      if (isCorner) {
+        w = startW + dx;
+        h = ev.shiftKey ? startH + dy : w / ratio; // Shift = без пропорций
+      } else if (handle === "e" || handle === "w") {
+        w = startW + dx; // бок — только ширина
+      } else {
+        h = startH + dy; // верх/низ — только высота
+      }
+      applySize(w, h);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
 
   const handleFile = async (file: File) => {
     setError(null);
@@ -46,21 +110,15 @@ export default function ImageUpload({
     try {
       const arrayBuffer = await file.arrayBuffer();
       const bytes = Array.from(new Uint8Array(arrayBuffer));
-      const path = await invoke<string>("upload_image", {
-        filename: file.name,
-        bytes,
-      });
+      const path = await invoke<string>("upload_image", { filename: file.name, bytes });
       onChangePath(path);
       const assetUrl = getAssetUrl(path, uploadsDir);
       if (assetUrl) {
         const dims = await getImageDimensions(assetUrl);
         if (dims) {
-          onChangeWidth?.(dims.width);
-          onChangeHeight?.(dims.height);
-        } else {
-          onChangeWidth?.(null);
-          onChangeHeight?.(null);
-        }
+          onChangeWidth?.(clampPx(dims.width));
+          onChangeHeight?.(clampPx(dims.height));
+        } else resetSize();
       }
     } catch (e) {
       setError(String(e));
@@ -70,79 +128,99 @@ export default function ImageUpload({
   };
 
   const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
+    e.preventDefault(); setIsDragging(false);
     const file = e.dataTransfer.files[0];
     if (file) handleFile(file);
   };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = () => setIsDragging(false);
-
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) handleFile(file);
   };
-
   const handleRemove = async () => {
     if (value) {
-      try {
-        await invoke("delete_image", { path: value });
-      } catch (e) {
-        console.error("Ошибка удаления картинки:", e);
-      }
+      try { await invoke("delete_image", { path: value }); }
+      catch (e) { console.error("Ошибка удаления картинки:", e); }
     }
     onChangePath(null);
-    onChangeWidth?.(null);
-    onChangeHeight?.(null);
+    resetSize();
+    setNatural(null);
   };
 
-  // === Картинка загружена: предпросмотр ===
+  // === Картинка загружена: ресайз-редактор ===
   if (value) {
     const imageUrl = getAssetUrl(value, uploadsDir);
     return (
       <div className="space-y-2">
-        <label className="text-sm font-medium">
-          {label}
-          {width && height ? (
-            <span className="ml-2 text-xs font-normal text-muted-foreground">
-              {Math.round(width)} × {Math.round(height)} px
-            </span>
-          ) : null}
-        </label>
-        <div className="relative group">
-          {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt="Предпросмотр"
-              className={cn(
-                "max-h-48 rounded-lg border border-border object-contain",
-                width && height && "aspect-auto"
-              )}
-              style={
-                width && height
-                  ? { aspectRatio: `${width} / ${height}`, maxWidth: "100%" }
-                  : undefined
-              }
-            />
-          ) : (
-            <div className="w-full max-h-48 flex items-center justify-center bg-muted rounded-lg border border-border">
-              <span className="text-sm text-muted-foreground">Загрузка пути...</span>
-            </div>
-          )}
-          <Button
-            variant="destructive"
-            size="icon"
-            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={handleRemove}
-          >
-            <X className="h-4 w-4" />
+        <div className="flex items-center justify-between gap-2">
+          <label className="text-sm font-medium">{label}</label>
+          <span className="text-xs font-mono text-muted-foreground">
+            {hasSize ? `${width} × ${height} px` : "авто (на всю ширину)"}
+          </span>
+        </div>
+
+        {/* Быстрые настройки размера */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {PRESETS.map((p) => (
+            <Button key={p.id} type="button" variant="outline" size="xs"
+              className={cn(width === p.px && "border-primary text-primary")}
+              onClick={() => applyPreset(p.px)}>
+              {p.label}
+            </Button>
+          ))}
+          <Button type="button" variant="outline" size="xs"
+            className={cn(!hasSize && "border-primary text-primary")}
+            onClick={resetSize}>
+            На всю ширину
+          </Button>
+          <Button type="button" variant="ghost" size="xs" onClick={resetSize} title="Сбросить размер этой картинки">
+            <RotateCcw className="h-3 w-3" />
+            Сброс
           </Button>
         </div>
+
+        {imageUrl ? (
+          <div className={cn("relative max-w-full select-none", hasSize ? "inline-block" : "block w-full")}>
+            <img
+              ref={imgRef}
+              src={imageUrl}
+              alt="Предпросмотр"
+              draggable={false}
+              onLoad={(e) => setNatural({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+              className="block rounded-lg border border-border object-contain"
+              style={hasSize ? { width: width!, height: height!, maxWidth: "100%" } : { width: "100%" }}
+            />
+            {/* 8 ручек ресайза */}
+            {HANDLES.map((h) => (
+              <div
+                key={h}
+                onPointerDown={startDrag(h)}
+                className="absolute z-10 h-3 w-3 rounded-full border-2 border-primary bg-background shadow"
+                style={{
+                  left: `${POS[h].x * 100}%`,
+                  top: `${POS[h].y * 100}%`,
+                  transform: "translate(-50%, -50%)",
+                  cursor: CURSOR[h],
+                }}
+              />
+            ))}
+            <Button
+              type="button" variant="destructive" size="icon-sm"
+              className="absolute -top-2 -right-2 z-20 shadow"
+              onClick={handleRemove}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <div className="w-full h-32 flex items-center justify-center bg-muted rounded-lg border border-border">
+            <span className="text-sm text-muted-foreground">Загрузка пути...</span>
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground">
+          💡 Угол — обе стороны с пропорциями, бок — одна сторона. Shift — без сохранения пропорций.
+        </p>
       </div>
     );
   }
@@ -170,12 +248,8 @@ export default function ImageUpload({
         ) : (
           <>
             <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">
-              Перетащите файл или нажмите для выбора
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              PNG, JPG, GIF, WebP (макс. 5 MB)
-            </p>
+            <p className="text-sm text-muted-foreground">Перетащите файл или нажмите для выбора</p>
+            <p className="text-xs text-muted-foreground mt-1">PNG, JPG, GIF, WebP (макс. 5 MB)</p>
           </>
         )}
       </div>

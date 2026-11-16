@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import {
   ArrowLeft, Plus, Trash2, Copy, Loader2,
-  AlertCircle, HelpCircle, FolderOpen, Folder
+  AlertCircle, HelpCircle, FolderOpen, Folder, Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -15,11 +15,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import type { QuestionDetail, AnswerPayload, CreateQuestionPayload, UpdateQuestionPayload } from "@/types/question";
 import ImageUpload from "@/components/editor/ImageUpload";
 import ImportExcel from "@/components/editor/ImportExcel";
 import QuestionList from "@/components/editor/QuestionList";
+import { cn, getAssetUrl } from "@/lib/utils";
+import { useAppStore } from "@/store/appStore";
 
 interface Ticket {
   id: number;
@@ -30,6 +31,7 @@ interface Ticket {
 export default function EditorTestPage() {
   const { testId } = useParams<{ testId: string }>();
   const navigate = useNavigate();
+  const uploadsDir = useAppStore((s) => s.uploadsDir);
 
   const [questions, setQuestions] = useState<QuestionDetail[]>([]);
   const [loading, setLoading] = useState(true);
@@ -611,6 +613,8 @@ export default function EditorTestPage() {
                 </Button>
               )}
             </div>
+
+            <QuestionPreview formData={formData} uploadsDir={uploadsDir} />
           </div>
 
           <DialogFooter>
@@ -657,6 +661,77 @@ export default function EditorTestPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function QuestionPreview({
+  formData,
+  uploadsDir,
+}: {
+  formData: {
+    text: string;
+    imagePath: string | null;
+    imageWidth: number | null;
+    imageHeight: number | null;
+    answers: AnswerPayload[];
+  };
+  uploadsDir: string | null;
+}) {
+  const imgUrl = getAssetUrl(formData.imagePath, uploadsDir);
+  return (
+    <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 space-y-3">
+      <p className="text-sm font-medium flex items-center gap-2">
+        <Eye className="h-4 w-4" />
+        Предпросмотр — как увидит студент
+      </p>
+      {imgUrl && (
+        <img
+          src={imgUrl}
+          alt=""
+          className="rounded-lg border border-border object-contain"
+          style={
+            formData.imageWidth && formData.imageHeight
+              ? { width: formData.imageWidth, height: formData.imageHeight, maxWidth: "100%" }
+              : { maxWidth: "100%" }
+          }
+        />
+      )}
+      <p className="font-medium break-words">{formData.text || "Текст вопроса…"}</p>
+      <div className="space-y-1.5">
+        {formData.answers.map((a, i) => {
+          const aUrl = getAssetUrl(a.imagePath, uploadsDir);
+          return (
+            <div
+              key={i}
+              className={cn(
+                "flex items-start gap-2 rounded-lg border p-2 text-sm",
+                a.isCorrect ? "border-green-500/40 bg-green-500/5" : "border-border"
+              )}
+            >
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-muted text-xs font-semibold">
+                {String.fromCharCode(65 + i)}
+              </span>
+              <div className="flex-1 min-w-0">
+                <span className="break-words">{a.text || `Вариант ${String.fromCharCode(65 + i)}`}</span>
+                {aUrl && (
+                  <img
+                    src={aUrl}
+                    alt=""
+                    className="mt-1 rounded border border-border object-contain"
+                    style={
+                      a.imageWidth && a.imageHeight
+                        ? { width: a.imageWidth, height: a.imageHeight, maxWidth: "100%" }
+                        : { maxWidth: "100%" }
+                    }
+                  />
+                )}
+              </div>
+              {a.isCorrect && <span className="text-xs text-green-600 shrink-0">✓ правильный</span>}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
