@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import {
-  ArrowLeft, Plus, Edit2, Trash2, Copy, Loader2,
+  ArrowLeft, Plus, Trash2, Copy, Loader2,
   AlertCircle, HelpCircle, FolderOpen, Folder
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,14 +15,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
 import type { QuestionDetail, AnswerPayload, CreateQuestionPayload, UpdateQuestionPayload } from "@/types/question";
 import ImageUpload from "@/components/editor/ImageUpload";
 import ImportExcel from "@/components/editor/ImportExcel";
 import QuestionList from "@/components/editor/QuestionList";
-import { useAppStore } from "@/store/appStore";
 
 interface Ticket {
   id: number;
@@ -33,7 +30,6 @@ interface Ticket {
 export default function EditorTestPage() {
   const { testId } = useParams<{ testId: string }>();
   const navigate = useNavigate();
-  const uploadsDir = useAppStore((s) => s.uploadsDir);
 
   const [questions, setQuestions] = useState<QuestionDetail[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +40,8 @@ export default function EditorTestPage() {
   const [formData, setFormData] = useState({
     text: "",
     imagePath: null as string | null,
+    imageWidth: null as number | null,
+    imageHeight: null as number | null,
     explanation: "",
     difficulty: 1,
     answers: [] as AnswerPayload[],
@@ -52,35 +50,35 @@ export default function EditorTestPage() {
   const [submitting, setSubmitting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
-  // === Состояния для системы билетов ===
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [ticketQuestions, setTicketQuestions] = useState<QuestionDetail[]>([]);
 
   useEffect(() => {
-    if (testId) {
-      loadTickets();
-    }
+    if (testId) loadTickets();
   }, [testId]);
 
   const loadTickets = async () => {
     if (!testId) return;
     try {
-      const ticketsData = await invoke<any[]>("get_test_tickets", { testId: parseInt(testId) });
+      const ticketsData = await invoke<Ticket[]>("get_test_tickets", { testId: parseInt(testId) });
       setTickets(ticketsData);
-      
-      // Если есть билеты и ничего не выбрано — выбираем первый
       if (ticketsData.length > 0 && !selectedTicketId) {
         const firstId = ticketsData[0].id;
         setSelectedTicketId(firstId);
         await loadTicketQuestions(firstId);
       } else {
-        // Билетов нет — показываем все вопросы теста
+        // Билетов нет — показываем общий пул вопросов
+        try {
+          const all = await invoke<QuestionDetail[]>("get_test_questions", { testId: parseInt(testId) });
+          setQuestions(all);
+        } catch (e) {
+          console.error("Ошибка загрузки вопросов:", e);
+        }
         setLoading(false);
       }
     } catch (e) {
       console.error("Ошибка загрузки билетов:", e);
-      // Если таблица tickets не существует — показываем режим без билетов
       setTickets([]);
       setLoading(false);
     }
@@ -94,11 +92,11 @@ export default function EditorTestPage() {
       const allQuestions = await invoke<QuestionDetail[]>("get_test_questions", {
         testId: parseInt(testId),
       });
-      // Фильтруем только вопросы этого билета, сохраняя порядок из БД
       const filtered = qIds
         .map((id) => allQuestions.find((q) => q.id === id))
         .filter((q): q is QuestionDetail => q !== undefined);
       setTicketQuestions(filtered);
+      setQuestions(allQuestions);
       setError(null);
     } catch (e) {
       setError(String(e));
@@ -123,9 +121,7 @@ export default function EditorTestPage() {
 
   const handleDuplicateTicket = async (ticketId: number) => {
     try {
-      await invoke("duplicate_ticket", {
-        payload: { ticketId, newName: `Билет (копия)` },
-      });
+      await invoke("duplicate_ticket", { payload: { ticketId, newName: `Билет (копия)` } });
       await loadTickets();
     } catch (e) {
       console.error("Ошибка дублирования билета:", e);
@@ -151,26 +147,11 @@ export default function EditorTestPage() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.text.trim()) {
-      setError("Текст вопроса не может быть пустым");
-      return;
-    }
-    if (formData.answers.length < 2) {
-      setError("Нужно минимум 2 варианта ответа");
-      return;
-    }
-    if (!formData.answers.some((a) => a.isCorrect)) {
-      setError("Нужно отметить хотя бы один правильный ответ");
-      return;
-    }
-    if (!formData.answers.every((a) => a.text.trim())) {
-      setError("Все варианты ответа должны быть заполнены");
-      return;
-    }
-    if (!selectedTicketId) {
-      setError("Сначала создайте билет");
-      return;
-    }
+    if (!formData.text.trim()) { setError("Текст вопроса не может быть пустым"); return; }
+    if (formData.answers.length < 2) { setError("Нужно минимум 2 варианта ответа"); return; }
+    if (!formData.answers.some((a) => a.isCorrect)) { setError("Нужно отметить хотя бы один правильный ответ"); return; }
+    if (!formData.answers.every((a) => a.text.trim())) { setError("Все варианты ответа должны быть заполнены"); return; }
+    if (!selectedTicketId) { setError("Сначала создайте билет"); return; }
 
     const validDifficulty = Math.max(1, Math.min(3, formData.difficulty));
     setSubmitting(true);
@@ -180,6 +161,8 @@ export default function EditorTestPage() {
           questionId: editingQuestion.id,
           text: formData.text,
           imagePath: formData.imagePath,
+          imageWidth: formData.imageWidth,
+          imageHeight: formData.imageHeight,
           explanation: formData.explanation || null,
           difficulty: validDifficulty,
           answers: formData.answers,
@@ -190,12 +173,13 @@ export default function EditorTestPage() {
           testId: parseInt(testId!),
           text: formData.text,
           imagePath: formData.imagePath,
+          imageWidth: formData.imageWidth,
+          imageHeight: formData.imageHeight,
           explanation: formData.explanation || null,
           difficulty: validDifficulty,
           answers: formData.answers,
         };
         const questionId = await invoke<number>("create_question", { payload });
-        // Добавляем новый вопрос в текущий билет
         const currentQIds = ticketQuestions.map((q) => q.id);
         await invoke("assign_questions_to_ticket", {
           payload: { ticketId: selectedTicketId, questionIds: [...currentQIds, questionId] },
@@ -216,12 +200,17 @@ export default function EditorTestPage() {
     setFormData({
       text: question.text,
       imagePath: question.imagePath,
+      imageWidth: question.imageWidth ?? null,
+      imageHeight: question.imageHeight ?? null,
       explanation: question.explanation || "",
       difficulty: Math.max(1, Math.min(3, question.difficulty || 1)),
       answers: question.answers.map((a) => ({
         id: a.id,
         text: a.text,
         isCorrect: a.isCorrect,
+        imagePath: a.imagePath ?? null,
+        imageWidth: a.imageWidth ?? null,
+        imageHeight: a.imageHeight ?? null,
       })),
     });
     setIsDialogOpen(true);
@@ -232,7 +221,7 @@ export default function EditorTestPage() {
     try {
       await invoke("delete_question", { questionId });
       setDeleteConfirm(null);
-      await loadTicketQuestions(selectedTicketId!);
+      if (selectedTicketId) await loadTicketQuestions(selectedTicketId);
       await loadTickets();
     } catch (e) {
       setError(String(e));
@@ -245,7 +234,7 @@ export default function EditorTestPage() {
     setSubmitting(true);
     try {
       await invoke("duplicate_question", { questionId });
-      await loadTicketQuestions(selectedTicketId!);
+      if (selectedTicketId) await loadTicketQuestions(selectedTicketId);
       await loadTickets();
     } catch (e) {
       setError(String(e));
@@ -254,25 +243,37 @@ export default function EditorTestPage() {
     }
   };
 
-  const handleAnswerChange = (index: number, field: keyof AnswerPayload, value: string | boolean) => {
-    const newAnswers = [...formData.answers];
-    newAnswers[index] = { ...newAnswers[index], [field]: value };
-    setFormData({ ...formData, answers: newAnswers });
+  // ✅ Функциональное обновление — фикс бага «картинка исчезает после загрузки»
+  const handleAnswerChange = (
+    index: number,
+    field: keyof AnswerPayload,
+    value: string | boolean | number | null
+  ) => {
+    setFormData((prev) => {
+      const newAnswers = [...prev.answers];
+      newAnswers[index] = { ...newAnswers[index], [field]: value } as AnswerPayload;
+      return { ...prev, answers: newAnswers };
+    });
   };
 
   const addAnswer = () => {
     if (formData.answers.length < 6) {
-      setFormData({
-        ...formData,
-        answers: [...formData.answers, { text: "", isCorrect: false }],
-      });
+      setFormData((prev) => ({
+        ...prev,
+        answers: [
+          ...prev.answers,
+          { text: "", isCorrect: false, imagePath: null, imageWidth: null, imageHeight: null },
+        ],
+      }));
     }
   };
 
   const removeAnswer = (index: number) => {
     if (formData.answers.length > 2) {
-      const newAnswers = formData.answers.filter((_, i) => i !== index);
-      setFormData({ ...formData, answers: newAnswers });
+      setFormData((prev) => ({
+        ...prev,
+        answers: prev.answers.filter((_, i) => i !== index),
+      }));
     }
   };
 
@@ -281,14 +282,16 @@ export default function EditorTestPage() {
     setFormData({
       text: "",
       imagePath: null,
+      imageWidth: null,
+      imageHeight: null,
       explanation: "",
       difficulty: 1,
       answers: [
-        { text: "", isCorrect: true },
-        { text: "", isCorrect: false },
-        { text: "", isCorrect: false },
-        { text: "", isCorrect: false },
-        { text: "", isCorrect: false },
+        { text: "", isCorrect: true, imagePath: null, imageWidth: null, imageHeight: null },
+        { text: "", isCorrect: false, imagePath: null, imageWidth: null, imageHeight: null },
+        { text: "", isCorrect: false, imagePath: null, imageWidth: null, imageHeight: null },
+        { text: "", isCorrect: false, imagePath: null, imageWidth: null, imageHeight: null },
+        { text: "", isCorrect: false, imagePath: null, imageWidth: null, imageHeight: null },
       ],
     });
     setIsDialogOpen(true);
@@ -329,7 +332,6 @@ export default function EditorTestPage() {
         </div>
       </div>
 
-      {/* Ошибка */}
       {error && (
         <Card className="border-destructive">
           <CardContent className="p-4 flex items-center gap-3 text-destructive">
@@ -339,7 +341,7 @@ export default function EditorTestPage() {
         </Card>
       )}
 
-      {/* === Переключатель билетов (коробка-верх) === */}
+      {/* Переключатель билетов */}
       {tickets.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {tickets.map((ticket) => {
@@ -365,9 +367,7 @@ export default function EditorTestPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{ticket.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {ticket.questionsCount} вопр.
-                      </p>
+                      <p className="text-xs text-muted-foreground">{ticket.questionsCount} вопр.</p>
                     </div>
                   </div>
                   {isActive && (
@@ -397,7 +397,6 @@ export default function EditorTestPage() {
           })}
         </div>
       ) : (
-        /* НОВОЕ: Если билетов нет, показываем все вопросы теста */
         <Card className="border-dashed">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -416,7 +415,7 @@ export default function EditorTestPage() {
         </Card>
       )}
 
-      {/* === Содержимое выбранного билета (коробка-низ) === */}
+      {/* Содержимое билета / общего пула */}
       {selectedTicketId ? (
         <Card>
           <CardHeader>
@@ -431,9 +430,7 @@ export default function EditorTestPage() {
             {ticketQuestions.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <HelpCircle className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-4">
-                  В этом билете пока нет вопросов
-                </p>
+                <p className="text-muted-foreground mb-4">В этом билете пока нет вопросов</p>
                 <Button onClick={handleCreate}>
                   <Plus className="mr-2 h-4 w-4" />
                   Добавить первый вопрос
@@ -461,25 +458,16 @@ export default function EditorTestPage() {
           </CardContent>
         </Card>
       ) : (
-        /* ✅ НОВОЕ: Показываем все вопросы теста, если билет не выбран */
         <Card>
           <CardHeader>
             <CardTitle>Все вопросы теста</CardTitle>
-            <CardDescription>
-              {questions.length} вопросов в общем пуле
-            </CardDescription>
+            <CardDescription>{questions.length} вопросов в общем пуле</CardDescription>
           </CardHeader>
           <CardContent>
             {questions.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <HelpCircle className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-4">
-                  В этом тесте пока нет вопросов
-                </p>
-                <Button onClick={handleCreate}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Добавить первый вопрос
-                </Button>
+                <p className="text-muted-foreground mb-4">В этом тесте пока нет вопросов</p>
               </div>
             ) : (
               <QuestionList
@@ -502,7 +490,6 @@ export default function EditorTestPage() {
         </Card>
       )}
 
-      {/* Импорт из Excel */}
       {selectedTicketId && (
         <ImportExcel
           testId={parseInt(testId!)}
@@ -512,7 +499,7 @@ export default function EditorTestPage() {
 
       {/* Диалог создания/редактирования вопроса */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingQuestion ? "Редактировать вопрос" : "Добавить вопрос"}
@@ -527,14 +514,19 @@ export default function EditorTestPage() {
           <div className="space-y-4">
             <ImageUpload
               value={formData.imagePath}
-              onChange={(path) => setFormData({ ...formData, imagePath: path })}
+              width={formData.imageWidth}
+              height={formData.imageHeight}
+              onChangePath={(path) => setFormData((prev) => ({ ...prev, imagePath: path }))}
+              onChangeWidth={(w) => setFormData((prev) => ({ ...prev, imageWidth: w }))}
+              onChangeHeight={(h) => setFormData((prev) => ({ ...prev, imageHeight: h }))}
+              label="Картинка вопроса"
             />
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Текст вопроса *</label>
               <Textarea
                 value={formData.text}
-                onChange={(e) => setFormData({ ...formData, text: e.target.value })}
+                onChange={(e) => setFormData((prev) => ({ ...prev, text: e.target.value }))}
                 placeholder="Введите текст вопроса"
                 rows={3}
                 className="w-full break-words"
@@ -545,7 +537,7 @@ export default function EditorTestPage() {
               <label className="text-sm font-medium">Пояснение (необязательно)</label>
               <Textarea
                 value={formData.explanation}
-                onChange={(e) => setFormData({ ...formData, explanation: e.target.value })}
+                onChange={(e) => setFormData((prev) => ({ ...prev, explanation: e.target.value }))}
                 placeholder="Пояснение будет показано после ответа"
                 rows={2}
                 className="w-full break-words"
@@ -556,7 +548,7 @@ export default function EditorTestPage() {
               <label className="text-sm font-medium">Сложность</label>
               <Select
                 value={formData.difficulty.toString()}
-                onValueChange={(v: string) => setFormData({ ...formData, difficulty: parseInt(v) })}
+                onValueChange={(v: string) => setFormData((prev) => ({ ...prev, difficulty: parseInt(v) }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Выберите сложность" />
@@ -575,29 +567,40 @@ export default function EditorTestPage() {
               </label>
               <div className="space-y-2">
                 {formData.answers.map((answer, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <Checkbox
-                      checked={answer.isCorrect}
-                      onCheckedChange={(checked) =>
-                        handleAnswerChange(index, "isCorrect", checked === true)
-                      }
+                  <div key={index} className="space-y-2 p-3 border border-border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={answer.isCorrect}
+                        onCheckedChange={(checked) =>
+                          handleAnswerChange(index, "isCorrect", checked === true)
+                        }
+                      />
+                      <Input
+                        value={answer.text}
+                        onChange={(e) => handleAnswerChange(index, "text", e.target.value)}
+                        placeholder={`Вариант ${String.fromCharCode(65 + index)}`}
+                        className="flex-1"
+                      />
+                      {formData.answers.length > 2 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeAnswer(index)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <ImageUpload
+                      value={answer.imagePath}
+                      width={answer.imageWidth}
+                      height={answer.imageHeight}
+                      onChangePath={(path) => handleAnswerChange(index, "imagePath", path)}
+                      onChangeWidth={(w) => handleAnswerChange(index, "imageWidth", w)}
+                      onChangeHeight={(h) => handleAnswerChange(index, "imageHeight", h)}
+                      label={`Картинка варианта ${String.fromCharCode(65 + index)}`}
                     />
-                    <Input
-                      value={answer.text}
-                      onChange={(e) => handleAnswerChange(index, "text", e.target.value)}
-                      placeholder={`Вариант ${String.fromCharCode(65 + index)}`}
-                      className="flex-1"
-                    />
-                    {formData.answers.length > 2 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeAnswer(index)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
                   </div>
                 ))}
               </div>
@@ -620,11 +623,7 @@ export default function EditorTestPage() {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Сохранение...
                 </>
-              ) : editingQuestion ? (
-                "Сохранить"
-              ) : (
-                "Создать"
-              )}
+              ) : editingQuestion ? "Сохранить" : "Создать"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -653,9 +652,7 @@ export default function EditorTestPage() {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Удаление...
                 </>
-              ) : (
-                "Удалить"
-              )}
+              ) : "Удалить"}
             </Button>
           </DialogFooter>
         </DialogContent>
