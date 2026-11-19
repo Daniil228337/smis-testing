@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use crate::models::image::ImageSize;
 
 /// Запись о попытке прохождения теста
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -23,6 +24,7 @@ pub struct AnswerOption {
     pub id: i64,
     pub text: String,
     pub image_path: Option<String>,
+    pub image_size: Option<ImageSize>,
 }
 
 /// Вопрос с вариантами ответов для прохождения теста
@@ -32,6 +34,7 @@ pub struct AttemptQuestion {
     pub id: i64,
     pub text: String,
     pub image_path: Option<String>,
+    pub image_size: Option<ImageSize>,
     pub explanation: Option<String>,
     pub difficulty: i64,
     pub answers: Vec<AnswerOption>,

@@ -14,12 +14,14 @@ export interface AnswerOption {
   id: number;
   text: string;
   imagePath: string | null;
+  imageSize?: { width: number | null; height: number | null };
 }
 
 export interface AttemptQuestion {
   id: number;
   text: string;
   imagePath: string | null;
+  imageSize?: { width: number | null; height: number | null };
   explanation: string | null;
   difficulty: number;
   answers: AnswerOption[];

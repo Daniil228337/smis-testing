@@ -145,7 +145,10 @@
     },
     "errors": {
       "titleEmpty": "Название теста не может быть пустым",
-      "disciplineEmpty": "Выберите дисциплину"
+      "disciplineEmpty": "Выберите дисциплину",
+      "timeLimitInvalid": "Лимит времени должен быть положительным числом",
+      "questionCountInvalid": "Количество вопросов должно быть положительным числом",
+      "summary": "Проверьте поля: {{count}}"
     },
     "buttons": {
       "cancel": "Отмена",
@@ -183,7 +186,10 @@
       "difficulty": "Сложность",
       "answers": "Варианты ответов",
       "answersHint": "Варианты ответов * (минимум 2, максимум 6)",
-      "answerPlaceholder": "Вариант {{letter}}"
+      "answerPlaceholder": "Вариант {{letter}}",
+      "textOrImageHint": "(или загрузите картинку)",
+      "textPlaceholderMedia": "Введите текст вопроса или загрузите изображение выше",
+      "answerPlaceholderMedia": "Вариант {{letter}} (текст или картинка)"
     },
     "buttons": {
       "addAnswer": "Добавить вариант"

@@ -2,6 +2,7 @@ use tauri::State;
 use sqlx::sqlite::SqliteArguments;
 use sqlx::Arguments;
 use crate::models::{AttemptSummary, AttemptDetails, AttemptQuestionDetail, AttemptsFilter};
+use crate::models::image::ImageSize;
 use crate::AppState;
 
 /// Получить все попытки с фильтрацией и сортировкой
@@ -19,9 +20,8 @@ pub async fn get_all_attempts(
         sort_order: None,
     });
 
-    // Базовый SQL с JOIN
     let mut sql = String::from(r#"
-        SELECT 
+        SELECT
             a.id,
             u.full_name AS user_name,
             u.group_name,
@@ -32,7 +32,7 @@ pub async fn get_all_attempts(
             a.score,
             a.max_score,
             a.duration_seconds,
-            CASE 
+            CASE
                 WHEN a.max_score > 0 THEN CAST(a.score AS REAL) / CAST(a.max_score AS REAL) * 100.0
                 ELSE 0.0
             END AS percentage,
@@ -43,45 +43,37 @@ pub async fn get_all_attempts(
         WHERE 1=1
     "#);
 
-    let mut args = SqliteArguments::default();  
+    let mut args = SqliteArguments::default();
 
-    // Добавляем фильтры
-        if let Some(test_id) = filter.test_id {
+    if let Some(test_id) = filter.test_id {
         sql.push_str(" AND a.test_id = ?");
         args.add(test_id);
     }
-
     if let Some(ref group_name) = filter.group_name {
         sql.push_str(" AND u.group_name = ?");
         args.add(group_name.clone());
     }
-
     if let Some(ref date_from) = filter.date_from {
         sql.push_str(" AND DATE(a.started_at) >= DATE(?)");
         args.add(date_from.clone());
     }
-
     if let Some(ref date_to) = filter.date_to {
         sql.push_str(" AND DATE(a.started_at) <= DATE(?)");
         args.add(date_to.clone());
     }
 
-    // Добавляем сортировку
     let sort_column = match filter.sort_by.as_deref() {
         Some("percentage") => "percentage",
         Some("user_name") => "u.full_name",
         Some("test_title") => "t.title",
         _ => "a.started_at",
     };
-
     let sort_order = match filter.sort_order.as_deref() {
         Some("asc") => "ASC",
         _ => "DESC",
     };
-
     sql.push_str(&format!(" ORDER BY {} {}", sort_column, sort_order));
 
-    // Выполняем запрос
     let attempts = sqlx::query_as_with::<_, AttemptSummary, _>(&sql, args)
         .fetch_all(&state.db)
         .await
@@ -97,10 +89,9 @@ pub async fn get_attempt_details(
     state: State<'_, AppState>,
     attempt_id: i64,
 ) -> Result<AttemptDetails, String> {
-    // 1. Получаем основную информацию о попытке
     let attempt_row: Option<(i64, String, String, String, i64, String, Option<String>, Option<i64>, Option<i64>, Option<i64>, String)> = sqlx::query_as(
         r#"
-        SELECT 
+        SELECT
             a.id,
             u.full_name,
             u.group_name,
@@ -123,7 +114,7 @@ pub async fn get_attempt_details(
     .await
     .map_err(|e| e.to_string())?;
 
-    let (id, user_name, group_name, test_title, test_id, started_at, finished_at, score, max_score, duration_seconds, status) = 
+    let (id, user_name, group_name, test_title, test_id, started_at, finished_at, score, max_score, duration_seconds, status) =
         attempt_row.ok_or_else(|| "Попытка не найдена".to_string())?;
 
     let percentage = if let Some(max) = max_score {
@@ -136,10 +127,9 @@ pub async fn get_attempt_details(
         0.0
     };
 
-    // 2. Получаем все вопросы теста с ответами пользователя
-    let question_rows: Vec<(i64, String, Option<String>, Option<String>)> = sqlx::query_as(
+    let question_rows: Vec<(i64, String, Option<String>, Option<i64>, Option<i64>, Option<String>)> = sqlx::query_as(
         r#"
-        SELECT q.id, q.text, q.image_path, q.explanation
+        SELECT q.id, q.text, q.image_path, q.image_width, q.image_height, q.explanation
         FROM questions q
         JOIN test_questions tq ON tq.question_id = q.id
         WHERE tq.test_id = ?1
@@ -152,9 +142,7 @@ pub async fn get_attempt_details(
     .map_err(|e| e.to_string())?;
 
     let mut questions: Vec<AttemptQuestionDetail> = Vec::new();
-
-    for (q_id, q_text, q_image, q_explanation) in question_rows {
-        // Получаем ответ пользователя (если есть)
+    for (q_id, q_text, q_image, q_w, q_h, q_explanation) in question_rows {
         let user_answer_row: Option<(Option<String>, i32, Option<i64>)> = sqlx::query_as(
             r#"
             SELECT a.text, aa.is_correct, aa.time_spent_seconds
@@ -174,7 +162,6 @@ pub async fn get_attempt_details(
             None => (None, false, None),
         };
 
-        // Получаем правильный ответ
         let correct_answer_row: Option<(String,)> = sqlx::query_as(
             "SELECT text FROM answers WHERE question_id = ?1 AND is_correct = 1 LIMIT 1"
         )
@@ -191,6 +178,7 @@ pub async fn get_attempt_details(
             question_id: q_id,
             question_text: q_text,
             question_image_path: q_image,
+            question_image_size: q_w.map(|w| ImageSize { width: Some(w as i32), height: q_h.map(|h| h as i32) }),
             explanation: q_explanation,
             user_answer_text,
             correct_answer_text,
@@ -199,7 +187,7 @@ pub async fn get_attempt_details(
         });
     }
 
-    log::info!("📋 Получены детали попытки #{}: {}/{} ({:.1}%)", 
+    log::info!("📋 Получены детали попытки #{}: {}/{} ({:.1}%)",
         attempt_id, score.unwrap_or(0), max_score.unwrap_or(0), percentage);
 
     Ok(AttemptDetails {
@@ -219,28 +207,21 @@ pub async fn get_attempt_details(
     })
 }
 
-/// Очистить всю историю попыток (но НЕ удалять тесты и вопросы)
+/// Очистить всю историю попыток
 #[tauri::command]
 pub async fn clear_all_attempts(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    // Используем транзакцию для атомарности
     let mut tx = state.db.begin().await.map_err(|e| e.to_string())?;
-
-    // 1. Удаляем все ответы в попытках
     sqlx::query("DELETE FROM attempt_answers")
         .execute(&mut *tx)
         .await
         .map_err(|e| e.to_string())?;
-
-    // 2. Удаляем все попытки
     sqlx::query("DELETE FROM attempts")
         .execute(&mut *tx)
         .await
         .map_err(|e| e.to_string())?;
-
     tx.commit().await.map_err(|e| e.to_string())?;
-
     log::info!("🗑️ История попыток полностью очищена");
     Ok(())
 }
@@ -254,26 +235,16 @@ pub async fn delete_attempts(
     if attempt_ids.is_empty() {
         return Ok(());
     }
-
-    // ✅ ИСПРАВЛЕНИЕ: Сохраняем количество ДО того, как вектор будет потреблён циклом
     let count = attempt_ids.len();
-
-    // Используем транзакцию для атомарности
     let mut tx = state.db.begin().await.map_err(|e| e.to_string())?;
-
     for id in attempt_ids {
-        // Благодаря ON DELETE CASCADE в attempt_answers, 
-        // удаление из attempts автоматически удалит и ответы
         sqlx::query("DELETE FROM attempts WHERE id = ?1")
             .bind(id)
             .execute(&mut *tx)
             .await
             .map_err(|e| e.to_string())?;
     }
-
     tx.commit().await.map_err(|e| e.to_string())?;
-    
-    // ✅ ИСПРАВЛЕНИЕ: Используем сохранённую переменную count
     log::info!("🗑️ Удалено {} выбранных попыток", count);
     Ok(())
 }

@@ -1,13 +1,16 @@
 use serde::{Deserialize, Serialize};
+use crate::models::image::ImageSize;
 
 /// Вариант ответа для отображения в редакторе
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnswerDetail {
-    pub id: Option<i64>, // None для новых вариантов
+    pub id: Option<i64>,
     pub text: String,
     pub is_correct: bool,
     pub order_index: i32,
+    pub image_path: Option<String>,
+    pub image_size: Option<ImageSize>,
 }
 
 /// Вопрос с вариантами ответов для редактора
@@ -17,6 +20,7 @@ pub struct QuestionDetail {
     pub id: i64,
     pub text: String,
     pub image_path: Option<String>,
+    pub image_size: Option<ImageSize>,
     pub explanation: Option<String>,
     pub difficulty: i64,
     pub order_index: i32,
@@ -30,6 +34,7 @@ pub struct CreateQuestionPayload {
     pub test_id: i64,
     pub text: String,
     pub image_path: Option<String>,
+    pub image_size: Option<ImageSize>,
     pub explanation: Option<String>,
     pub difficulty: i64,
     pub answers: Vec<AnswerPayload>,
@@ -42,6 +47,7 @@ pub struct UpdateQuestionPayload {
     pub question_id: i64,
     pub text: String,
     pub image_path: Option<String>,
+    pub image_size: Option<ImageSize>,
     pub explanation: Option<String>,
     pub difficulty: i64,
     pub answers: Vec<AnswerPayload>,
@@ -51,7 +57,9 @@ pub struct UpdateQuestionPayload {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnswerPayload {
-    pub id: Option<i64>, // None для новых
+    pub id: Option<i64>,
     pub text: String,
     pub is_correct: bool,
+    pub image_path: Option<String>,
+    pub image_size: Option<ImageSize>,
 }

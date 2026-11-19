@@ -46,8 +46,8 @@ export default function AnswerOption({ answer, isSelected, index, onSelect }: An
             alt="Вариант ответа"
             className="mt-2 rounded-lg border border-border object-contain"
             style={
-              answer.imageWidth && answer.imageHeight
-                ? { width: answer.imageWidth, height: answer.imageHeight, maxWidth: '100%' }
+              answer.imageSize?.width && answer.imageSize?.height
+                ? { width: answer.imageSize.width, height: answer.imageSize.height, maxWidth: '100%' }
                 : { maxWidth: '100%', maxHeight: 160 }
             }
           />

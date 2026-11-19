@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -40,7 +40,6 @@ interface QuestionListProps {
   submitting: boolean;
 }
 
-// Отдельный компонент для одного перетаскиваемого вопроса
 function SortableQuestion({
   question,
   index,
@@ -65,9 +64,7 @@ function SortableQuestion({
     transform,
     transition,
     isDragging,
-  } = useSortable({
-    id: question.id,
-  });
+  } = useSortable({ id: question.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -81,12 +78,9 @@ function SortableQuestion({
 
   return (
     <div ref={setNodeRef} style={style}>
-      <Card
-        className={isDragging ? "shadow-2xl ring-2 ring-primary" : ""}
-      >
+      <Card className={isDragging ? "shadow-2xl ring-2 ring-primary" : ""}>
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
-            {/* Drag Handle */}
             <button
               {...attributes}
               {...listeners}
@@ -96,12 +90,10 @@ function SortableQuestion({
               <GripVertical className="h-5 w-5" />
             </button>
 
-            {/* Номер вопроса */}
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
               {index + 1}
             </div>
 
-            {/* Контент */}
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-4 mb-2">
                 <p className="font-medium break-words whitespace-normal flex-1">
@@ -116,39 +108,65 @@ function SortableQuestion({
                 </span>
               </div>
 
-              {/* Картинка вопроса */}
+              {/* Картинка вопроса — с сохранённым размером */}
               {question.imagePath && uploadsDir && (
                 <img
                   src={getAssetUrl(question.imagePath, uploadsDir) || ""}
                   alt="Иллюстрация к вопросу"
-                  className="max-h-32 rounded-lg border border-border mb-2 object-contain"
+                  className="rounded-lg border border-border mb-2 object-contain"
+                  style={
+                    question.imageSize?.width && question.imageSize?.height
+                      ? {
+                          width: question.imageSize.width,
+                          height: question.imageSize.height,
+                          maxWidth: "100%",
+                        }
+                      : { maxWidth: "100%", maxHeight: 128 }
+                  }
                 />
               )}
 
-              {/* Варианты ответов */}
+              {/* Варианты ответов — текст + картинка с сохранённым размером */}
               <div className="space-y-1 mt-3">
                 {question.answers.map((answer, ansIndex) => (
                   <div
                     key={answer.id || ansIndex}
-                    className={`flex items-center gap-2 text-sm ${
+                    className={`flex items-start gap-2 text-sm ${
                       answer.isCorrect
                         ? "text-green-700 dark:text-green-300 font-medium"
                         : "text-muted-foreground"
                     }`}
                   >
                     {answer.isCorrect ? (
-                      <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
                     ) : (
-                      <div className="h-4 w-4 shrink-0 rounded-full border border-muted-foreground/30" />
+                      <div className="h-4 w-4 shrink-0 rounded-full border border-muted-foreground/30 mt-0.5" />
                     )}
-                    <span className="break-words whitespace-normal">
-                      {String.fromCharCode(65 + ansIndex)}. {answer.text}
-                    </span>
+                    <div className="flex-1 min-w-0">
+                      <span className="break-words whitespace-normal">
+                        {String.fromCharCode(65 + ansIndex)}. {answer.text}
+                      </span>
+                      {answer.imagePath && uploadsDir && (
+                        <img
+                          src={getAssetUrl(answer.imagePath, uploadsDir) || ""}
+                          alt=""
+                          className="mt-1 rounded border border-border object-contain"
+                          style={
+                            answer.imageSize?.width && answer.imageSize?.height
+                              ? {
+                                  width: answer.imageSize.width,
+                                  height: answer.imageSize.height,
+                                  maxWidth: "100%",
+                                }
+                              : { maxWidth: "100%", maxHeight: 96 }
+                          }
+                        />
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
 
-              {/* Пояснение */}
               {question.explanation && (
                 <p className="text-xs text-muted-foreground mt-3 italic">
                   💡 {question.explanation}
@@ -156,22 +174,11 @@ function SortableQuestion({
               )}
             </div>
 
-            {/* Кнопки действий */}
             <div className="flex gap-2 shrink-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onEdit(question)}
-                disabled={submitting}
-              >
+              <Button variant="ghost" size="icon" onClick={() => onEdit(question)} disabled={submitting}>
                 <Edit2 className="h-4 w-4" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onDuplicate(question.id)}
-                disabled={submitting}
-              >
+              <Button variant="ghost" size="icon" onClick={() => onDuplicate(question.id)} disabled={submitting}>
                 <Copy className="h-4 w-4" />
               </Button>
               <Button
@@ -203,23 +210,16 @@ export default function QuestionList({
   const [localQuestions, setLocalQuestions] = useState<QuestionDetail[]>(questions);
   const uploadsDir = useAppStore((s) => s.uploadsDir);
 
-  // Синхронизируем локальный стейт с пропсом при изменении
-  // (например, после добавления/удаления вопроса)
-  useState(() => {
+  // ✅ Синхронизируем локальный стейт при ЛЮБОМ изменении пропса,
+  // а не только при смене id/длины. Иначе после сохранения вопроса
+  // (те же id, но новый imageSize) список и модалка показывают старые данные.
+  useEffect(() => {
     setLocalQuestions(questions);
-  });
-
-  // Обновляем локальный стейт, когда questions меняется извне
-  if (localQuestions.length !== questions.length || 
-      localQuestions.some((q, i) => q.id !== questions[i]?.id)) {
-    setLocalQuestions(questions);
-  }
+  }, [questions]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8, // Небольшая дистанция, чтобы клик по кнопке не начинал drag
-      },
+      activationConstraint: { distance: 8 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
@@ -228,20 +228,16 @@ export default function QuestionList({
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
-
     if (!over || active.id === over.id) return;
 
     const oldIndex = localQuestions.findIndex((q) => q.id === active.id);
     const newIndex = localQuestions.findIndex((q) => q.id === over.id);
-
     if (oldIndex === -1 || newIndex === -1) return;
 
-    // Оптимистичный UI: сразу обновляем порядок локально
     const newOrder = arrayMove(localQuestions, oldIndex, newIndex);
     setLocalQuestions(newOrder);
     onReordered(newOrder);
 
-    // В фоне сохраняем новый порядок в БД
     try {
       await invoke("reorder_questions", {
         testId,
@@ -249,16 +245,11 @@ export default function QuestionList({
       });
     } catch (e) {
       console.error("Ошибка сохранения порядка:", e);
-      // В случае ошибки — откатываем (опционально, можно просто показать ошибку)
     }
   };
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
-    >
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext
         items={localQuestions.map((q) => q.id)}
         strategy={verticalListSortingStrategy}

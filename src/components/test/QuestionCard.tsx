@@ -46,8 +46,8 @@ export default function QuestionCard({
             alt="Иллюстрация к вопросу"
             className="rounded-lg border border-border object-contain"
             style={
-              question.imageWidth && question.imageHeight
-                ? { width: question.imageWidth, height: question.imageHeight, maxWidth: '100%' }
+              question.imageSize?.width && question.imageSize?.height
+                ? { width: question.imageSize.width, height: question.imageSize.height, maxWidth: '100%' }
                 : { maxWidth: '100%', maxHeight: 256 }
             }
           />

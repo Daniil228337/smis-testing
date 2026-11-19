@@ -112,6 +112,7 @@ export default function SettingsPage() {
       await invoke('update_settings', { settings: factoryDefaults });
       // 2. Мгновенно применяем к DOM без перезагрузки
       useSettingsStore.getState().apply(factoryDefaults);
+      setSettings(factoryDefaults);
       setMessage({ type: 'success', text: t('settings.messages.resetToDefaultsSuccess') });
     } catch (e) {
       setMessage({ type: 'error', text: String(e) });

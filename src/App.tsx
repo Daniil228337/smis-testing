@@ -1,9 +1,8 @@
+import { useEffect } from "react";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
-import Layout from "@/components/Layout"; 
-//import ProtectedRoute from "@/components/ProtectedRoute";
+import { invoke } from "@tauri-apps/api/core";
+import Layout from "@/components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
-
-// Страницы
 import LoginPage from "@/pages/LoginPage";
 import EditorLoginPage from "@/pages/EditorLoginPage";
 import TestsLibraryPage from "@/pages/TestsLibraryPage";
@@ -19,15 +18,21 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 function App() {
   useAppSettings();
 
+  // Один раз при старте: убираем призрачные попытки (in_progress без ответов).
+  // В этот момент активных попыток нет — удаление безопасно.
+  useEffect(() => {
+    invoke<number>("cleanup_empty_attempts").catch((e) =>
+      console.error("Не удалось очистить призрачные попытки:", e)
+    );
+  }, []);
+
   return (
     <ThemeProvider>
       <HashRouter>
         <Routes>
-          {/* Публичные страницы */}
           <Route path="/" element={<LoginPage />} />
           <Route path="/editor-login" element={<EditorLoginPage />} />
 
-          {/* Защищённые страницы студента */}
           <Route
             element={
               <ProtectedRoute>
@@ -41,7 +46,6 @@ function App() {
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
 
-          {/* Защищённые страницы админа */}
           <Route
             element={
               <ProtectedRoute requireAdmin>
@@ -50,15 +54,17 @@ function App() {
             }
           >
             <Route path="/editor" element={<EditorPage />} />
-            <Route path="/editor/test/:testId" element={
-              <ProtectedRoute requireAdmin>
-                <EditorTestPage />
-              </ProtectedRoute>
-            } />
+            <Route
+              path="/editor/test/:testId"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <EditorTestPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/analytics" element={<AnalyticsPage />} />
           </Route>
 
-          {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </HashRouter>

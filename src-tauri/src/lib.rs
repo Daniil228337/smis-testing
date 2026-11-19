@@ -1,13 +1,13 @@
 use sqlx::SqlitePool;
 use tauri::Manager;
-
+///тест нового теста
 use crate::db::{create_pool, run_migrations};
 
 use crate::commands::db::{check_db, get_db_info};
 use crate::commands::user::{create_user, get_recent_users, get_or_create_admin_user};
 
 use crate::commands::test::{get_all_tests, get_all_disciplines};
-use crate::commands::attempt::{start_attempt, save_answer, finish_attempt, get_attempt_result};
+use crate::commands::attempt::{start_attempt, save_answer, finish_attempt, get_attempt_result, cleanup_empty_attempts};
 use crate::commands::editor::{get_all_tests_for_editor, create_test, update_test, delete_test, duplicate_test};
 use crate::commands::question::{get_test_questions, create_question, update_question, delete_question, duplicate_question, upload_image, delete_image, reorder_questions};
 use crate::commands::analytics::{get_all_attempts, get_attempt_details, clear_all_attempts, delete_attempts};
@@ -99,6 +99,7 @@ pub fn run() {
             start_attempt,
             save_answer,
             finish_attempt,
+            cleanup_empty_attempts,
             get_attempt_result,
             init_admin_password,
             verify_admin_password,

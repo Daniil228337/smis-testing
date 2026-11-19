@@ -145,7 +145,10 @@
     },
     "errors": {
       "titleEmpty": "Назва тэста не можа быць пустой",
-      "disciplineEmpty": "Абярыце дысцыпліну"
+      "disciplineEmpty": "Абярыце дысцыпліну",
+      "timeLimitInvalid": "Ліміт часу павінен быць дадатным лікам",
+      "questionCountInvalid": "Колькасць пытанняў павінна быць дадатным лікам",
+      "summary": "Праверце палі: {{count}}"
     },
     "buttons": {
       "cancel": "Адмяніць",
@@ -180,7 +183,10 @@
       "difficulty": "Складанасць",
       "answers": "Варыянты адказаў",
       "answersHint": "Варыянты адказаў * (мінімум 2, максімум 6)",
-      "answerPlaceholder": "Варыянт {{letter}}"
+      "answerPlaceholder": "Варыянт {{letter}}",
+      "textOrImageHint": "(або загрузіце выяву)",
+      "textPlaceholderMedia": "Увядзіце тэкст пытання або загрузіце выяву вышэй",
+      "answerPlaceholderMedia": "Варыянт {{letter}} (тэкст або выява)"
     },
     "buttons": {
       "addAnswer": "Дадаць варыянт"
@@ -189,7 +195,11 @@
       "textEmpty": "Тэкст пытання не можа быць пустым",
       "minAnswers": "Трэба мінімум 2 варыянты адказу",
       "noCorrect": "Трэба адзначыць хаця б адзін правільны адказ",
-      "emptyAnswers": "Усе варыянты адказу павінны быць запоўнены"
+      "emptyAnswers": "Усе варыянты адказу павінны быць запоўнены",
+      "textOrImage": "Увядзіце тэкст пытання або загрузіце выяву",
+      "answerTextOrImage": "Запоўніце тэкст або загрузіце выяву",
+      "noTicket": "Спачатку стварыце білет",
+      "summary": "Праверце палі: {{count}}"
     },
     "deleteConfirm": {
       "title": "Выдаліць выбраныя спробы?",

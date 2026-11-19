@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { X, CheckCircle2, XCircle, Clock, AlertCircle } from "lucide-react";
-import { useTranslation } from "react-i18next"; // ← ДОБАВЛЕНО
+import { CheckCircle2, XCircle, Clock, AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +31,7 @@ interface AttemptDetails {
     questionId: number;
     questionText: string;
     questionImagePath: string | null;
+    questionImageSize?: { width: number | null; height: number | null };
     explanation: string | null;
     userAnswerText: string | null;
     correctAnswerText: string;
@@ -45,7 +46,7 @@ interface AttemptDetailsModalProps {
 }
 
 export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetailsModalProps) {
-  const { t } = useTranslation(); // ← ПЕРЕНЕСЕНО ВНУТРЬ КОМПОНЕНТА
+  const { t } = useTranslation();
   const [details, setDetails] = useState<AttemptDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,11 +54,9 @@ export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetai
 
   useEffect(() => {
     if (!attemptId) return;
-    
     setLoading(true);
     setError(null);
     setDetails(null);
-    
     invoke<AttemptDetails>("get_attempt_details", { attemptId })
       .then((data) => setDetails(data))
       .catch((e) => setError(String(e)))
@@ -84,18 +83,22 @@ export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetai
 
   return (
     <Dialog open={!!attemptId} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      {/* ✅ sm:max-w-6xl, а не max-w-6xl: иначе базовый sm:max-w-sm из dialog.tsx побеждает */}
+      <DialogContent className="sm:max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>{t('analytics.details.title', { id: attemptId })}</span>
+          <DialogTitle className="flex items-center justify-between gap-4 pr-8">
+            <span className="truncate">{t('analytics.details.title', { id: attemptId })}</span>
             {details && (
-              <Badge variant={details.percentage >= 80 ? "default" : details.percentage >= 50 ? "secondary" : "destructive"}>
+              <Badge
+                className="shrink-0"
+                variant={details.percentage >= 80 ? "default" : details.percentage >= 50 ? "secondary" : "destructive"}
+              >
                 {details.percentage.toFixed(1)}%
               </Badge>
             )}
           </DialogTitle>
         </DialogHeader>
-        
+
         {details && (
           <div className="flex justify-end">
             <ExportAttemptPdf details={details} />
@@ -118,38 +121,36 @@ export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetai
         {details && !loading && (
           <div className="space-y-6">
             {/* Шапка с информацией */}
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              <Card>
-                <CardContent className="p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="min-w-0">
+                <CardContent className="p-4 space-y-1">
                   <p className="text-xs text-muted-foreground">{t('analytics.details.student')}</p>
-                  <p className="font-semibold">{details.userName}</p>
-                  <p className="text-sm text-muted-foreground">{details.groupName}</p>
+                  <p className="font-semibold truncate" title={details.userName}>{details.userName}</p>
+                  <p className="text-sm text-muted-foreground truncate" title={details.groupName}>{details.groupName}</p>
                 </CardContent>
               </Card>
-              <Card>
-                <CardContent className="p-4">
+              <Card className="min-w-0">
+                <CardContent className="p-4 space-y-1">
                   <p className="text-xs text-muted-foreground">{t('analytics.details.test')}</p>
-                  <p className="font-semibold line-clamp-2">{details.testTitle}</p>
+                  <p className="font-semibold line-clamp-2" title={details.testTitle}>{details.testTitle}</p>
                 </CardContent>
               </Card>
-              <Card>
-                <CardContent className="p-4">
+              <Card className="min-w-0">
+                <CardContent className="p-4 space-y-1">
                   <p className="text-xs text-muted-foreground">{t('analytics.details.result')}</p>
-                  <p className="text-2xl font-bold">
+                  <p className="text-2xl font-bold whitespace-nowrap">
                     {details.score ?? 0} / {details.maxScore ?? 0}
                   </p>
                 </CardContent>
               </Card>
-              <Card>
-                <CardContent className="p-4">
+              <Card className="min-w-0">
+                <CardContent className="p-4 space-y-1">
                   <p className="text-xs text-muted-foreground">{t('analytics.details.time')}</p>
                   <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <p className="font-semibold">{formatDuration(details.durationSeconds)}</p>
+                    <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <p className="font-semibold whitespace-nowrap">{formatDuration(details.durationSeconds)}</p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatDate(details.startedAt)}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{formatDate(details.startedAt)}</p>
                 </CardContent>
               </Card>
             </div>
@@ -164,7 +165,7 @@ export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetai
                 >
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-start gap-3">
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-sm font-medium text-muted-foreground">
                             {t('analytics.details.question')} {index + 1}
@@ -180,14 +181,23 @@ export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetai
                             </span>
                           )}
                         </div>
-                        <p className="font-medium">{q.questionText}</p>
-                        
-                        {/* Картинка вопроса */}
+                        <p className="font-medium break-words">{q.questionText}</p>
+
+                        {/* ✅ Картинка вопроса с сохранённым размером */}
                         {q.questionImagePath && uploadsDir && (
                           <img
                             src={getAssetUrl(q.questionImagePath, uploadsDir) || ""}
                             alt="Иллюстрация"
-                            className="mt-2 max-h-40 rounded-lg border border-border object-contain"
+                            className="mt-2 rounded-lg border border-border object-contain"
+                            style={
+                              q.questionImageSize?.width && q.questionImageSize?.height
+                                ? {
+                                    width: q.questionImageSize.width,
+                                    height: q.questionImageSize.height,
+                                    maxWidth: "100%",
+                                  }
+                                : { maxWidth: "100%", maxHeight: 160 }
+                            }
                           />
                         )}
                       </div>
@@ -200,14 +210,12 @@ export default function AttemptDetailsModal({ attemptId, onClose }: AttemptDetai
                           {q.userAnswerText || t('analytics.details.notAnswered')}
                         </p>
                       </div>
-                      
                       {!q.isCorrect && (
                         <div>
                           <p className="text-xs text-muted-foreground mb-1">{t('analytics.details.correctAnswer')}:</p>
                           <p className="text-green-700 font-medium">{q.correctAnswerText}</p>
                         </div>
                       )}
-                      
                       {q.explanation && (
                         <div className="pt-2 mt-2 border-t border-border">
                           <p className="text-xs text-muted-foreground mb-1">💡 {t('analytics.details.explanation')}:</p>

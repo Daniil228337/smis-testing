@@ -1,20 +1,21 @@
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use tauri::State;
-use crate::models::{Attempt, AttemptQuestion, AnswerOption, AttemptResult};
+
+use crate::models::{AnswerOption, Attempt, AttemptQuestion, AttemptResult};
+use crate::models::image::ImageSize;
 use crate::AppState;
 
-/// Структура для внутреннего использования: вопрос + его варианты
 struct QuestionWithAnswers {
     question_id: i64,
     text: String,
     image_path: Option<String>,
+    image_size: Option<ImageSize>,
     explanation: Option<String>,
     difficulty: i64,
-    answers: Vec<(i64, String, Option<String>, bool)>, // (id, text, image_path, is_correct)
+    answers: Vec<(i64, String, Option<String>, Option<ImageSize>, bool)>,
 }
 
-/// Детальная информация о результате попытки (для экрана разбора)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AttemptResultDetail {
@@ -28,7 +29,6 @@ pub struct AttemptResultDetail {
     pub questions: Vec<AttemptQuestionReview>,
 }
 
-/// Информация о вопросе для разбора результата
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AttemptQuestionReview {
@@ -40,18 +40,17 @@ pub struct AttemptQuestionReview {
     pub is_correct: bool,
 }
 
-/// Запуск новой попытки прохождения теста.
-/// Если уже есть незавершённая попытка — продолжаем её (не создаём новую).
+/// Запуск (или возобновление) попытки. Идемпотентно благодаря
+/// INSERT OR IGNORE + partial unique index (миграция 20261119000001).
 #[tauri::command]
 pub async fn start_attempt(
     state: State<'_, AppState>,
     user_id: i64,
     test_id: i64,
 ) -> Result<(Attempt, Vec<AttemptQuestion>, Option<i32>), String> {
-    // 1. Получаем настройки теста
     let test_row: Option<(Option<i32>, i32, i32, Option<i32>, i32)> = sqlx::query_as(
         "SELECT time_limit_minutes, shuffle_questions, shuffle_answers, question_count, use_tickets
-         FROM tests WHERE id = ?1"
+         FROM tests WHERE id = ?1",
     )
     .bind(test_id)
     .fetch_optional(&state.db)
@@ -61,101 +60,97 @@ pub async fn start_attempt(
     let (time_limit, shuffle_questions, shuffle_answers, question_count, use_tickets) =
         test_row.ok_or_else(|| "Тест не найден".to_string())?;
 
-    // 2. Проверяем, есть ли уже незавершённая попытка
-    let existing_attempt: Option<Attempt> = sqlx::query_as(
-        "SELECT id, user_id, test_id, started_at, finished_at, score, max_score, duration_seconds, status
-         FROM attempts WHERE user_id = ?1 AND test_id = ?2 AND status = 'in_progress'"
+    // Атомарно создаём попытку, только если активной ещё нет.
+    sqlx::query(
+        "INSERT OR IGNORE INTO attempts (user_id, test_id, status)
+         VALUES (?1, ?2, 'in_progress')",
     )
     .bind(user_id)
     .bind(test_id)
-    .fetch_optional(&state.db)
+    .execute(&state.db)
     .await
     .map_err(|e| e.to_string())?;
 
-    let attempt = if let Some(existing) = existing_attempt {
-        // ✅ Продолжаем существующую попытку
-        log::info!("♻️ Продолжаем существующую попытку #{}", existing.id);
-        existing
-    } else {
-        // ✅ Создаём новую попытку
-        let result = sqlx::query(
-            "INSERT INTO attempts (user_id, test_id, status) VALUES (?1, ?2, 'in_progress')"
-        )
-        .bind(user_id)
-        .bind(test_id)
-        .execute(&state.db)
-        .await
-        .map_err(|e| e.to_string())?;
-        
-        let attempt_id = result.last_insert_rowid();
+    let attempt: Attempt = sqlx::query_as(
+        "SELECT id, user_id, test_id, started_at, finished_at, score, max_score, duration_seconds, status
+         FROM attempts
+         WHERE user_id = ?1 AND test_id = ?2 AND status = 'in_progress'",
+    )
+    .bind(user_id)
+    .bind(test_id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| e.to_string())?;
 
-        let new_attempt: Attempt = sqlx::query_as(
-            "SELECT id, user_id, test_id, started_at, finished_at, score, max_score, duration_seconds, status
-             FROM attempts WHERE id = ?1"
-        )
-        .bind(attempt_id)
-        .fetch_one(&state.db)
-        .await
-        .map_err(|e| e.to_string())?;
-        
-        log::info!("🆕 Создана новая попытка #{}", new_attempt.id);
-        new_attempt
-    };
+    let (stored_ticket_id, stored_total): (Option<i64>, Option<i64>) = sqlx::query_as(
+        "SELECT ticket_id, questions_total FROM attempts WHERE id = ?1",
+    )
+    .bind(attempt.id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| e.to_string())?;
 
-    // 3. Получаем вопросы в зависимости от режима
     let mut questions_with_answers: Vec<QuestionWithAnswers> = Vec::new();
+    let mut chosen_ticket_id: Option<i64> = None;
 
     if use_tickets == 1 {
-        // === РЕЖИМ БИЛЕТОВ ===
-        let tickets: Vec<(i64,)> = sqlx::query_as(
-            "SELECT id FROM tickets WHERE test_id = ?1"
-        )
-        .bind(test_id)
-        .fetch_all(&state.db)
-        .await
-        .map_err(|e| e.to_string())?;
-
-        if tickets.is_empty() {
-            return Err("В тесте включён режим билетов, но билеты не созданы".to_string());
-        }
-
-        let selected_ticket_id = {
-            let mut rng = rand::thread_rng();
-            let selected = tickets.choose(&mut rng)
-                .ok_or_else(|| "Не удалось выбрать билет".to_string())?;
-            selected.0
+        let ticket_id = if let Some(tid) = stored_ticket_id {
+            tid
+        } else {
+            let tickets: Vec<(i64,)> =
+                sqlx::query_as("SELECT id FROM tickets WHERE test_id = ?1")
+                    .bind(test_id)
+                    .fetch_all(&state.db)
+                    .await
+                    .map_err(|e| e.to_string())?;
+            if tickets.is_empty() {
+                return Err("В тесте включён режим билетов, но билеты не созданы".to_string());
+            }
+            // rng живёт только внутри этого блока (без await) → Send не нарушается
+            let picked = {
+                let mut rng = rand::thread_rng();
+                tickets.choose(&mut rng).map(|t| t.0)
+            };
+            picked.ok_or_else(|| "Не удалось выбрать билет".to_string())?
         };
+        chosen_ticket_id = Some(ticket_id);
 
-        let question_rows: Vec<(i64, String, Option<String>, Option<String>, i64)> = sqlx::query_as(
-            r#"
-            SELECT q.id, q.text, q.image_path, q.explanation, q.difficulty
-            FROM questions q
-            JOIN ticket_questions tq ON tq.question_id = q.id
-            WHERE tq.ticket_id = ?1
-            ORDER BY tq.order_index
-            "#,
-        )
-        .bind(selected_ticket_id)
-        .fetch_all(&state.db)
-        .await
-        .map_err(|e| e.to_string())?;
-
-        for (q_id, q_text, q_image, q_expl, q_diff) in question_rows {
-            let answer_rows: Vec<(i64, String, Option<String>, i32)> = sqlx::query_as(
-                "SELECT id, text, image_path, is_correct
-                 FROM answers
-                 WHERE question_id = ?1
-                 ORDER BY order_index"
+        let question_rows: Vec<(i64, String, Option<String>, Option<i64>, Option<i64>, Option<String>, i64)> =
+            sqlx::query_as(
+                r#"
+                SELECT q.id, q.text, q.image_path, q.image_width, q.image_height, q.explanation, q.difficulty
+                FROM questions q
+                JOIN ticket_questions tq ON tq.question_id = q.id
+                WHERE tq.ticket_id = ?1
+                ORDER BY tq.order_index
+                "#,
             )
-            .bind(q_id)
+            .bind(ticket_id)
             .fetch_all(&state.db)
             .await
             .map_err(|e| e.to_string())?;
 
+        for (q_id, q_text, q_image, q_w, q_h, q_expl, q_diff) in question_rows {
+            let answer_rows: Vec<(i64, String, Option<String>, Option<i64>, Option<i64>, i32)> =
+                sqlx::query_as(
+                    "SELECT id, text, image_path, image_width, image_height, is_correct
+                     FROM answers WHERE question_id = ?1 ORDER BY order_index",
+                )
+                .bind(q_id)
+                .fetch_all(&state.db)
+                .await
+                .map_err(|e| e.to_string())?;
+
             let answers = answer_rows
                 .into_iter()
-                .map(|(a_id, a_text, a_image, is_correct)| {
-                    (a_id, a_text, a_image, is_correct == 1)
+                .map(|(a_id, a_text, a_image, a_w, a_h, correct)| {
+                    (
+                        a_id,
+                        a_text,
+                        a_image,
+                        a_w.map(|w| ImageSize { width: Some(w as i32), height: a_h.map(|h| h as i32) }),
+                        correct == 1,
+                    )
                 })
                 .collect();
 
@@ -163,41 +158,49 @@ pub async fn start_attempt(
                 question_id: q_id,
                 text: q_text,
                 image_path: q_image,
+                image_size: q_w.map(|w| ImageSize { width: Some(w as i32), height: q_h.map(|h| h as i32) }),
                 explanation: q_expl,
                 difficulty: q_diff,
                 answers,
             });
         }
     } else {
-        // === ОБЫЧНЫЙ РЕЖИМ ===
-        let question_rows: Vec<(i64, String, Option<String>, Option<String>, i64)> = sqlx::query_as(
-            "SELECT q.id, q.text, q.image_path, q.explanation, q.difficulty
-             FROM questions q
-             JOIN test_questions tq ON tq.question_id = q.id
-             WHERE tq.test_id = ?1
-             ORDER BY tq.order_index"
-        )
-        .bind(test_id)
-        .fetch_all(&state.db)
-        .await
-        .map_err(|e| e.to_string())?;
-
-        for (q_id, q_text, q_image, q_expl, q_diff) in question_rows {
-            let answer_rows: Vec<(i64, String, Option<String>, i32)> = sqlx::query_as(
-                "SELECT id, text, image_path, is_correct
-                 FROM answers
-                 WHERE question_id = ?1
-                 ORDER BY order_index"
+        let question_rows: Vec<(i64, String, Option<String>, Option<i64>, Option<i64>, Option<String>, i64)> =
+            sqlx::query_as(
+                r#"
+                SELECT q.id, q.text, q.image_path, q.image_width, q.image_height, q.explanation, q.difficulty
+                FROM questions q
+                JOIN test_questions tq ON tq.question_id = q.id
+                WHERE tq.test_id = ?1
+                ORDER BY tq.order_index
+                "#,
             )
-            .bind(q_id)
+            .bind(test_id)
             .fetch_all(&state.db)
             .await
             .map_err(|e| e.to_string())?;
 
+        for (q_id, q_text, q_image, q_w, q_h, q_expl, q_diff) in question_rows {
+            let answer_rows: Vec<(i64, String, Option<String>, Option<i64>, Option<i64>, i32)> =
+                sqlx::query_as(
+                    "SELECT id, text, image_path, image_width, image_height, is_correct
+                     FROM answers WHERE question_id = ?1 ORDER BY order_index",
+                )
+                .bind(q_id)
+                .fetch_all(&state.db)
+                .await
+                .map_err(|e| e.to_string())?;
+
             let answers = answer_rows
                 .into_iter()
-                .map(|(a_id, a_text, a_image, is_correct)| {
-                    (a_id, a_text, a_image, is_correct == 1)
+                .map(|(a_id, a_text, a_image, a_w, a_h, correct)| {
+                    (
+                        a_id,
+                        a_text,
+                        a_image,
+                        a_w.map(|w| ImageSize { width: Some(w as i32), height: a_h.map(|h| h as i32) }),
+                        correct == 1,
+                    )
                 })
                 .collect();
 
@@ -205,6 +208,7 @@ pub async fn start_attempt(
                 question_id: q_id,
                 text: q_text,
                 image_path: q_image,
+                image_size: q_w.map(|w| ImageSize { width: Some(w as i32), height: q_h.map(|h| h as i32) }),
                 explanation: q_expl,
                 difficulty: q_diff,
                 answers,
@@ -212,20 +216,14 @@ pub async fn start_attempt(
         }
     }
 
-    // ==========================================
-    // ВСЕ .await ВЫЗОВЫ ЗАВЕРШЕНЫ ВЫШЕ!
-    // ==========================================
-    let mut rng = rand::thread_rng();
-
-    // 4. Перемешиваем вопросы и ограничиваем количество
-    if use_tickets == 1 {
+    // Перемешивание + обрезка в изолированном блоке (rng умирает до await ниже)
+    {
+        let mut rng = rand::thread_rng();
         if shuffle_questions == 1 {
             questions_with_answers.shuffle(&mut rng);
         }
-    } else {
-        if shuffle_questions == 1 {
-            questions_with_answers.shuffle(&mut rng);
-        }
+    }
+    if use_tickets == 0 {
         if let Some(count) = question_count {
             if (count as usize) < questions_with_answers.len() {
                 questions_with_answers.truncate(count as usize);
@@ -233,40 +231,57 @@ pub async fn start_attempt(
         }
     }
 
-    // 5. Формируем результат для фронтенда
-    let mut attempt_questions: Vec<AttemptQuestion> = Vec::new();
-    
-    for q in questions_with_answers {
-        let mut answers: Vec<AnswerOption> = q.answers
-            .into_iter()
-            .map(|(id, text, image_path, _is_correct)| AnswerOption {
-                id,
-                text,
-                image_path,
-            })
-            .collect();
+    let presented_total = questions_with_answers.len() as i64;
 
-        if shuffle_answers == 1 {
-            answers.shuffle(&mut rng);
-        }
-
-        attempt_questions.push(AttemptQuestion {
-            id: q.question_id,
-            text: q.text,
-            image_path: q.image_path,
-            explanation: q.explanation,
-            difficulty: q.difficulty,
-            answers,
-        });
+    // Фиксируем выданный набор только при первом старте
+    if stored_total.is_none() {
+        sqlx::query(
+            "UPDATE attempts SET questions_total = ?1, ticket_id = ?2
+             WHERE id = ?3 AND questions_total IS NULL",
+        )
+        .bind(presented_total)
+        .bind(chosen_ticket_id)
+        .bind(attempt.id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| e.to_string())?;
     }
 
+    // Сборка вопросов для фронта; перемешивание ответов — снова в изолированном блоке,
+    // после последнего await, чтобы ThreadRng не пересекал await.
+    let attempt_questions: Vec<AttemptQuestion> = {
+        let mut rng = rand::thread_rng();
+        questions_with_answers
+            .into_iter()
+            .map(|q| {
+                let mut answers: Vec<AnswerOption> = q
+                    .answers
+                    .into_iter()
+                    .map(|(id, text, image_path, image_size, _)| AnswerOption { id, text, image_path, image_size })
+                    .collect();
+                if shuffle_answers == 1 {
+                    answers.shuffle(&mut rng);
+                }
+                AttemptQuestion {
+                    id: q.question_id,
+                    text: q.text,
+                    image_path: q.image_path,
+                    image_size: q.image_size,
+                    explanation: q.explanation,
+                    difficulty: q.difficulty,
+                    answers,
+                }
+            })
+            .collect()
+    };
+
     log::info!(
-        "✅ Попытка #{} для теста #{} (вопросов: {}, shuffle_q: {}, shuffle_a: {}, use_tickets: {})",
-        attempt.id, test_id, attempt_questions.len(), shuffle_questions, shuffle_answers, use_tickets
+        "✅ Попытка #{} для теста #{} (вопросов: {}, билетов: {}, возобновление: {})",
+        attempt.id, test_id, attempt_questions.len(), use_tickets, stored_total.is_some()
     );
-    
+
     Ok((attempt, attempt_questions, time_limit))
-}   
+}
 
 /// Сохранение ответа на вопрос
 #[tauri::command]
@@ -278,7 +293,7 @@ pub async fn save_answer(
     time_spent_seconds: Option<i64>,
 ) -> Result<bool, String> {
     let is_correct_row: Option<(i32,)> = sqlx::query_as(
-        "SELECT is_correct FROM answers WHERE id = ?1 AND question_id = ?2"
+        "SELECT is_correct FROM answers WHERE id = ?1 AND question_id = ?2",
     )
     .bind(answer_id)
     .bind(question_id)
@@ -292,8 +307,7 @@ pub async fn save_answer(
     };
 
     let existing: Option<(i64,)> = sqlx::query_as(
-        "SELECT id FROM attempt_answers 
-         WHERE attempt_id = ?1 AND question_id = ?2"
+        "SELECT id FROM attempt_answers WHERE attempt_id = ?1 AND question_id = ?2",
     )
     .bind(attempt_id)
     .bind(question_id)
@@ -304,9 +318,9 @@ pub async fn save_answer(
     match existing {
         Some((existing_id,)) => {
             sqlx::query(
-                "UPDATE attempt_answers 
+                "UPDATE attempt_answers
                  SET selected_answer_id = ?1, is_correct = ?2, time_spent_seconds = ?3
-                 WHERE id = ?4"
+                 WHERE id = ?4",
             )
             .bind(answer_id)
             .bind(is_correct as i32)
@@ -318,9 +332,9 @@ pub async fn save_answer(
         }
         None => {
             sqlx::query(
-                "INSERT INTO attempt_answers 
+                "INSERT INTO attempt_answers
                  (attempt_id, question_id, selected_answer_id, is_correct, time_spent_seconds)
-                 VALUES (?1, ?2, ?3, ?4, ?5)"
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
             )
             .bind(attempt_id)
             .bind(question_id)
@@ -333,119 +347,135 @@ pub async fn save_answer(
         }
     }
 
-    log::debug!(
-        "Сохранён ответ: attempt={}, question={}, answer={}, correct={}",
-        attempt_id, question_id, answer_id, is_correct
-    );
-
     Ok(is_correct)
 }
 
-/// Завершение попытки: подсчёт score, duration
+/// Завершение попытки.
+/// max_score = количество ВЫДАННЫХ вопросов (questions_total), а не отвеченных.
 #[tauri::command]
 pub async fn finish_attempt(
     state: State<'_, AppState>,
     attempt_id: i64,
 ) -> Result<AttemptResult, String> {
-    let score_row: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM attempt_answers 
-         WHERE attempt_id = ?1 AND is_correct = 1"
+    let meta: Option<(Option<i64>, Option<i64>, i64, i64)> = sqlx::query_as(
+        "SELECT questions_total, ticket_id, test_id, user_id FROM attempts WHERE id = ?1",
+    )
+    .bind(attempt_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let (questions_total, ticket_id, test_id, user_id) =
+        meta.ok_or_else(|| "Попытка не найдена".to_string())?;
+
+    let score: i64 = sqlx::query_as::<_, (i64,)>(
+        "SELECT COUNT(*) FROM attempt_answers WHERE attempt_id = ?1 AND is_correct = 1",
     )
     .bind(attempt_id)
     .fetch_one(&state.db)
     .await
-    .map_err(|e| e.to_string())?;
-    let score = score_row.0;
+    .map_err(|e| e.to_string())?
+    .0;
 
-    let max_score_row: (i64,) = sqlx::query_as(
-        "SELECT COUNT(DISTINCT question_id) FROM attempt_answers WHERE attempt_id = ?1"
-    )
-    .bind(attempt_id)
-    .fetch_one(&state.db)
-    .await
-    .map_err(|e| e.to_string())?;
-    let max_score = max_score_row.0;
+    // Знаменатель: выданные вопросы; для старых записей — размер билета/теста
+    let max_score: i64 = match questions_total {
+        Some(n) if n > 0 => n,
+        _ => {
+            let cfg: (i32, Option<i32>) =
+                sqlx::query_as("SELECT use_tickets, question_count FROM tests WHERE id = ?1")
+                    .bind(test_id)
+                    .fetch_one(&state.db)
+                    .await
+                    .map_err(|e| e.to_string())?;
 
-    let max_score = if max_score == 0 {
-        let _total_row: (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM attempt_answers WHERE attempt_id = ?1"
-        )
-        .bind(attempt_id)
-        .fetch_one(&state.db)
-        .await
-        .map_err(|e| e.to_string())?;
-        
-        let test_id_row: (i64,) = sqlx::query_as(
-            "SELECT test_id FROM attempts WHERE id = ?1"
-        )
-        .bind(attempt_id)
-        .fetch_one(&state.db)
-        .await
-        .map_err(|e| e.to_string())?;
-        
-        let count_row: (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM test_questions WHERE test_id = ?1"
-        )
-        .bind(test_id_row.0)
-        .fetch_one(&state.db)
-        .await
-        .map_err(|e| e.to_string())?;
-        
-        count_row.0
-    } else {
-        max_score
+            let base: i64 = if cfg.0 == 1 {
+                match ticket_id {
+                    Some(tid) => sqlx::query_as::<_, (i64,)>(
+                        "SELECT COUNT(*) FROM ticket_questions WHERE ticket_id = ?1",
+                    )
+                    .bind(tid)
+                    .fetch_one(&state.db)
+                    .await
+                    .map_err(|e| e.to_string())?
+                    .0,
+                    None => sqlx::query_as::<_, (i64,)>(
+                        "SELECT COUNT(*) FROM test_questions WHERE test_id = ?1",
+                    )
+                    .bind(test_id)
+                    .fetch_one(&state.db)
+                    .await
+                    .map_err(|e| e.to_string())?
+                    .0,
+                }
+            } else {
+                let n: i64 = sqlx::query_as::<_, (i64,)>(
+                    "SELECT COUNT(*) FROM test_questions WHERE test_id = ?1",
+                )
+                .bind(test_id)
+                .fetch_one(&state.db)
+                .await
+                .map_err(|e| e.to_string())?
+                .0;
+                match cfg.1 {
+                    Some(c) if (c as i64) < n => c as i64,
+                    _ => n,
+                }
+            };
+            base
+        }
     };
 
+    let mut tx = state.db.begin().await.map_err(|e| e.to_string())?;
+
     sqlx::query(
-        "UPDATE attempts 
+        "UPDATE attempts
          SET finished_at = CURRENT_TIMESTAMP,
              duration_seconds = CAST((julianday(CURRENT_TIMESTAMP) - julianday(started_at)) * 86400 AS INTEGER),
-             score = ?1,
-             max_score = ?2,
-             status = 'completed'
-         WHERE id = ?3"
+             score = ?1, max_score = ?2, status = 'completed'
+         WHERE id = ?3",
     )
     .bind(score)
     .bind(max_score)
     .bind(attempt_id)
-    .execute(&state.db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| e.to_string())?;
 
-        // ✅ НОВОЕ: Удаляем все другие in_progress попытки для этого пользователя и теста
+    // Убираем sibling-призраки этой же пары (user, test)
     sqlx::query(
         "DELETE FROM attempt_answers WHERE attempt_id IN (
-            SELECT id FROM attempts 
-            WHERE user_id = (SELECT user_id FROM attempts WHERE id = ?1) 
-            AND test_id = (SELECT test_id FROM attempts WHERE id = ?1) 
-            AND status = 'in_progress' 
-            AND id != ?1
-        )"
+             SELECT id FROM attempts
+             WHERE user_id = ?1 AND test_id = ?2 AND status = 'in_progress' AND id != ?3
+         )",
     )
+    .bind(user_id)
+    .bind(test_id)
     .bind(attempt_id)
-    .execute(&state.db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| e.to_string())?;
 
     sqlx::query(
-        "DELETE FROM attempts 
-         WHERE user_id = (SELECT user_id FROM attempts WHERE id = ?1) 
-         AND test_id = (SELECT test_id FROM attempts WHERE id = ?1) 
-         AND status = 'in_progress' 
-         AND id != ?1"
+        "DELETE FROM attempts
+         WHERE user_id = ?1 AND test_id = ?2 AND status = 'in_progress' AND id != ?3",
     )
+    .bind(user_id)
+    .bind(test_id)
     .bind(attempt_id)
-    .execute(&state.db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| e.to_string())?;
 
-    let duration_row: (i64,) = sqlx::query_as(
-        "SELECT duration_seconds FROM attempts WHERE id = ?1"
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    let duration_seconds: i64 = sqlx::query_as::<_, (i64,)>(
+        "SELECT duration_seconds FROM attempts WHERE id = ?1",
     )
     .bind(attempt_id)
     .fetch_one(&state.db)
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| e.to_string())?
+    .0;
 
     let percentage = if max_score > 0 {
         (score as f64 / max_score as f64) * 100.0
@@ -453,39 +483,47 @@ pub async fn finish_attempt(
         0.0
     };
 
-    log::info!(
-        "Завершена попытка #{}: {}/{} ({:.1}%)",
-        attempt_id, score, max_score, percentage
-    );
+    log::info!("Завершена попытка #{}: {}/{} ({:.1}%)", attempt_id, score, max_score, percentage);
 
-    Ok(AttemptResult {
-        attempt_id,
-        score,
-        max_score,
-        duration_seconds: duration_row.0,
-        percentage,
-    })
+    Ok(AttemptResult { attempt_id, score, max_score, duration_seconds, percentage })
 }
 
-/// Получить детальную информацию о результате попытки (ДЛЯ ШАГА 8)
+/// Удаляет призрачные попытки (in_progress без ответов).
+/// Вызывается один раз при старте приложения — активных попыток в этот момент нет.
+#[tauri::command]
+pub async fn cleanup_empty_attempts(state: State<'_, AppState>) -> Result<u64, String> {
+    let result = sqlx::query(
+        "DELETE FROM attempts
+         WHERE status = 'in_progress'
+           AND NOT EXISTS (SELECT 1 FROM attempt_answers aa WHERE aa.attempt_id = attempts.id)",
+    )
+    .execute(&state.db)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let removed = result.rows_affected();
+    if removed > 0 {
+        log::info!("🧹 Удалено призрачных попыток: {}", removed);
+    }
+    Ok(removed)
+}
+
+/// Детальная информация о результате попытки
 #[tauri::command]
 pub async fn get_attempt_result(
     state: State<'_, AppState>,
     attempt_id: i64,
 ) -> Result<AttemptResultDetail, String> {
-    // 1. Получаем основную информацию о попытке
     let attempt_row: Option<(i64, i64, String, i64, i64, i64)> = sqlx::query_as(
         "SELECT a.id, a.test_id, t.title, a.score, a.max_score, a.duration_seconds
-         FROM attempts a
-         JOIN tests t ON t.id = a.test_id
-         WHERE a.id = ?1"
+         FROM attempts a JOIN tests t ON t.id = a.test_id WHERE a.id = ?1",
     )
     .bind(attempt_id)
     .fetch_optional(&state.db)
     .await
     .map_err(|e| e.to_string())?;
 
-    let (attempt_id, test_id, test_title, score, max_score, duration_seconds) = 
+    let (attempt_id, test_id, test_title, score, max_score, duration_seconds) =
         attempt_row.ok_or_else(|| "Попытка не найдена".to_string())?;
 
     let percentage = if max_score > 0 {
@@ -494,13 +532,10 @@ pub async fn get_attempt_result(
         0.0
     };
 
-    // 2. Получаем все вопросы теста с ответами пользователя и правильными ответами
     let question_rows: Vec<(i64, String, Option<String>)> = sqlx::query_as(
         "SELECT q.id, q.text, q.explanation
-         FROM questions q
-         JOIN test_questions tq ON tq.question_id = q.id
-         WHERE tq.test_id = ?1
-         ORDER BY tq.order_index"
+         FROM questions q JOIN test_questions tq ON tq.question_id = q.id
+         WHERE tq.test_id = ?1 ORDER BY tq.order_index",
     )
     .bind(test_id)
     .fetch_all(&state.db)
@@ -508,14 +543,11 @@ pub async fn get_attempt_result(
     .map_err(|e| e.to_string())?;
 
     let mut questions: Vec<AttemptQuestionReview> = Vec::new();
-
     for (q_id, q_text, q_explanation) in question_rows {
-        // Получаем ответ пользователя (если есть)
         let user_answer_row: Option<(String, i32)> = sqlx::query_as(
             "SELECT a.text, aa.is_correct
-             FROM attempt_answers aa
-             JOIN answers a ON a.id = aa.selected_answer_id
-             WHERE aa.attempt_id = ?1 AND aa.question_id = ?2"
+             FROM attempt_answers aa JOIN answers a ON a.id = aa.selected_answer_id
+             WHERE aa.attempt_id = ?1 AND aa.question_id = ?2",
         )
         .bind(attempt_id)
         .bind(q_id)
@@ -528,11 +560,8 @@ pub async fn get_attempt_result(
             None => (None, false),
         };
 
-        // Получаем правильный ответ
         let correct_answer_row: (String,) = sqlx::query_as(
-            "SELECT text FROM answers 
-             WHERE question_id = ?1 AND is_correct = 1
-             LIMIT 1"
+            "SELECT text FROM answers WHERE question_id = ?1 AND is_correct = 1 LIMIT 1",
         )
         .bind(q_id)
         .fetch_one(&state.db)
@@ -549,19 +578,7 @@ pub async fn get_attempt_result(
         });
     }
 
-    log::info!(
-        "Получен результат попытки #{}: {}/{} ({:.1}%)",
-        attempt_id, score, max_score, percentage
-    );
-
     Ok(AttemptResultDetail {
-        attempt_id,
-        test_id,
-        test_title,
-        score,
-        max_score,
-        duration_seconds,
-        percentage,
-        questions,
+        attempt_id, test_id, test_title, score, max_score, duration_seconds, percentage, questions,
     })
 }

@@ -145,7 +145,10 @@
     },
     "errors": {
       "titleEmpty": "Test title cannot be empty",
-      "disciplineEmpty": "Please select a discipline"
+      "disciplineEmpty": "Please select a discipline",
+      "timeLimitInvalid": "Time limit must be a positive number",
+      "questionCountInvalid": "Question count must be a positive number",
+      "summary": "Check fields: {{count}}"
     },
     "buttons": {
       "cancel": "Cancel",
@@ -183,7 +186,10 @@
       "difficulty": "Difficulty",
       "answers": "Answer options",
       "answersHint": "Answer options * (minimum 2, maximum 6)",
-      "answerPlaceholder": "Option {{letter}}"
+      "answerPlaceholder": "Option {{letter}}",
+      "textOrImageHint": "(or upload an image)",
+      "textPlaceholderMedia": "Enter the question text or upload an image above",
+      "answerPlaceholderMedia": "Option {{letter}} (text or image)"
     },
     "buttons": {
       "addAnswer": "Add option"
@@ -192,7 +198,11 @@
       "textEmpty": "Question text cannot be empty",
       "minAnswers": "At least 2 answer options are required",
       "noCorrect": "At least one correct answer must be marked",
-      "emptyAnswers": "All answer options must be filled in"
+      "emptyAnswers": "All answer options must be filled in",
+      "textOrImage": "Enter the question text or upload an image",
+      "answerTextOrImage": "Fill in the text or upload an image",
+      "noTicket": "Create a ticket first",
+      "summary": "Check fields: {{count}}"
     },
     "deleteConfirm": {
       "title": "Delete question?",

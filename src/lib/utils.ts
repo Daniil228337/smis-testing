@@ -13,21 +13,27 @@ export function getAssetUrl(
   uploadsDir: string | null
 ): string | null {
   if (!relativePath || !uploadsDir) return null;
-  
-  // Если это уже полный URL, возвращаем как есть (защита от двойного преобразования)
   if (relativePath.startsWith('asset://') || relativePath.startsWith('http')) {
     return relativePath;
   }
-
-  // Нормализуем разделители путей (Windows \ -> /)
   const normalizedBase = uploadsDir.replace(/\\/g, '/');
-  
-  // Убираем префикс "uploads/" из пути БД, чтобы не дублировать его, 
-  // так как normalizedBase уже заканчивается на "uploads"
   const fileName = relativePath.replace(/\\/g, '/').replace(/^uploads\//i, '');
-  
-  // Собираем абсолютный путь: база + имя файла
   const absolutePath = `${normalizedBase}/${fileName}`;
-  
-  return convertFileSrc(absolutePath);
+  return convertFileSrc(absolutePath);  // ← просто вернуть, без логов
+}
+
+export type ImageSize = "small" | "medium" | "large" | "full";
+
+export function getImageSizeClass(size?: string | null): string {
+  switch (size) {
+    case "small":
+      return "max-h-24";
+    case "large":
+      return "max-h-96";
+    case "full":
+      return "w-full"; // без ограничения по высоте, тянется на всю ширину
+    case "medium":
+    default:
+      return "max-h-48";
+  }
 }

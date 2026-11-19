@@ -18,11 +18,17 @@ interface ImageUploadProps {
 const MIN_PX = 50;
 const MAX_PX = 2000;
 
+// ✅ НОВЫЙ СПИСОК ПРЕСЕТОВ: от Микро до Большой
 const PRESETS = [
+  { id: "micro", label: "Микро", px: 50 },
+  { id: "mini", label: "Мини", px: 100 },
   { id: "small", label: "Маленькая", px: 200 },
   { id: "medium", label: "Средняя", px: 400 },
   { id: "large", label: "Большая", px: 600 },
 ] as const;
+
+// ✅ ДЕФОЛТНЫЙ ПРЕСЕТ при загрузке картинки
+const DEFAULT_PRESET_PX = 400; // Средняя
 
 type Handle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 const HANDLES: Handle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
@@ -57,7 +63,6 @@ export default function ImageUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const uploadsDir = useAppStore((s) => s.uploadsDir);
-
   const hasSize = !!(width && height);
 
   const applySize = (w: number, h: number) => {
@@ -66,6 +71,7 @@ export default function ImageUpload({
   };
   const resetSize = () => { onChangeWidth?.(null); onChangeHeight?.(null); };
 
+  // ✅ НОВАЯ ФУНКЦИЯ: применить пресет с сохранением пропорций
   const applyPreset = (px: number) => {
     const rect = imgRef.current?.getBoundingClientRect();
     const ratio = natural ? natural.w / natural.h : rect ? rect.width / rect.height : 4 / 3;
@@ -80,7 +86,6 @@ export default function ImageUpload({
     const ratio = natural ? natural.w / natural.h : startW / startH;
     const sx = e.clientX, sy = e.clientY;
     const isCorner = handle.length === 2;
-
     const move = (ev: PointerEvent) => {
       let dx = ev.clientX - sx, dy = ev.clientY - sy;
       if (handle.includes("w")) dx = -dx;
@@ -90,9 +95,9 @@ export default function ImageUpload({
         w = startW + dx;
         h = ev.shiftKey ? startH + dy : w / ratio; // Shift = без пропорций
       } else if (handle === "e" || handle === "w") {
-        w = startW + dx; // бок — только ширина
+        w = startW + dx;
       } else {
-        h = startH + dy; // верх/низ — только высота
+        h = startH + dy;
       }
       applySize(w, h);
     };
@@ -104,6 +109,7 @@ export default function ImageUpload({
     window.addEventListener("pointerup", up);
   };
 
+  // ✅ ИЗМЕНЕНО: при загрузке применяем пресет "Средняя" (400px) вместо оригинала
   const handleFile = async (file: File) => {
     setError(null);
     setLoading(true);
@@ -116,9 +122,14 @@ export default function ImageUpload({
       if (assetUrl) {
         const dims = await getImageDimensions(assetUrl);
         if (dims) {
-          onChangeWidth?.(clampPx(dims.width));
-          onChangeHeight?.(clampPx(dims.height));
-        } else resetSize();
+          setNatural({ w: dims.width, h: dims.height });
+          // ✅ Применяем дефолтный пресет (Средняя = 400px) с сохранением пропорций
+          const ratio = dims.width / dims.height;
+          const defaultWidth = DEFAULT_PRESET_PX;
+          applySize(defaultWidth, defaultWidth / ratio);
+        } else {
+          resetSize();
+        }
       }
     } catch (e) {
       setError(String(e));
@@ -159,7 +170,6 @@ export default function ImageUpload({
             {hasSize ? `${width} × ${height} px` : "авто (на всю ширину)"}
           </span>
         </div>
-
         {/* Быстрые настройки размера */}
         <div className="flex flex-wrap items-center gap-1.5">
           {PRESETS.map((p) => (
@@ -179,7 +189,6 @@ export default function ImageUpload({
             Сброс
           </Button>
         </div>
-
         {imageUrl ? (
           <div className={cn("relative max-w-full select-none", hasSize ? "inline-block" : "block w-full")}>
             <img
@@ -207,7 +216,7 @@ export default function ImageUpload({
             ))}
             <Button
               type="button" variant="destructive" size="icon-sm"
-              className="absolute -top-2 -right-2 z-20 shadow"
+              className="absolute -top-8 -right-8 z-20 shadow"
               onClick={handleRemove}
             >
               <X className="h-3.5 w-3.5" />

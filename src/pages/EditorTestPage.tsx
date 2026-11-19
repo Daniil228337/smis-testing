@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft, Plus, Trash2, Copy, Loader2,
-  AlertCircle, HelpCircle, FolderOpen, Folder, Eye
+  AlertCircle, HelpCircle, FolderOpen, Folder, Eye, X, CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter,
-  DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,9 +28,43 @@ interface Ticket {
   questionsCount: number;
 }
 
+interface QuestionFieldErrors {
+  text?: string;
+  answers?: string;
+  correct?: string;
+  ticket?: string;
+  answerTexts: Record<number, string>;
+}
+
+const emptyFieldErrors = (): QuestionFieldErrors => ({ answerTexts: {} });
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null;
+  return (
+    <p
+      id={id}
+      role="alert"
+      data-field-error
+      className="flex items-center gap-1.5 text-xs font-medium text-destructive animate-in fade-in slide-in-from-top-1 duration-200"
+    >
+      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+      <span>{message}</span>
+    </p>
+  );
+}
+
+function scrollToFirstError() {
+  setTimeout(() => {
+    document
+      .querySelector("[data-field-error]")
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 80);
+}
+
 export default function EditorTestPage() {
   const { testId } = useParams<{ testId: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const uploadsDir = useAppStore((s) => s.uploadsDir);
 
   const [questions, setQuestions] = useState<QuestionDetail[]>([]);
@@ -49,16 +83,78 @@ export default function EditorTestPage() {
     answers: [] as AnswerPayload[],
   });
 
+  // ✅ Инлайн-валидация: подсказка появляется прямо под незаполненным полем
+  const [fieldErrors, setFieldErrors] = useState<QuestionFieldErrors>(emptyFieldErrors());
+  const [showErrors, setShowErrors] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
+  const [dialogError, setDialogError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [ticketQuestions, setTicketQuestions] = useState<QuestionDetail[]>([]);
 
+  const [toast, setToast] = useState<{ message: string; type: "error" | "success" } | null>(null);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    setToast(null);
+  }, [formData.text, formData.imagePath, formData.answers]);
+
   useEffect(() => {
     if (testId) loadTickets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
+
+  const validate = (data: typeof formData): QuestionFieldErrors => {
+    const errs = emptyFieldErrors();
+    if (!data.text.trim() && !data.imagePath) {
+      errs.text = t("editorTest.errors.textOrImage");
+    }
+    if (data.answers.length < 2) {
+      errs.answers = t("editorTest.errors.minAnswers");
+    }
+    if (!data.answers.some((a) => a.isCorrect)) {
+      errs.correct = t("editorTest.errors.noCorrect");
+    }
+    data.answers.forEach((a, i) => {
+      if (!a.text.trim() && !a.imagePath) {
+        errs.answerTexts[i] = t("editorTest.errors.answerTextOrImage");
+      }
+    });
+    if (!selectedTicketId) {
+      errs.ticket = t("editorTest.errors.noTicket");
+    }
+    return errs;
+  };
+
+  const countErrors = (e: QuestionFieldErrors) =>
+    (e.text ? 1 : 0) +
+    (e.answers ? 1 : 0) +
+    (e.correct ? 1 : 0) +
+    (e.ticket ? 1 : 0) +
+    Object.keys(e.answerTexts).length;
+
+  // После первой попытки «Создать/Сохранить» ошибки пересчитываются на лету:
+  // исправил поле — подсказка исчезла мгновенно
+  useEffect(() => {
+    setDialogError(null);
+    if (showErrors) setFieldErrors(validate(formData));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData, showErrors, selectedTicketId, t]);
+
+  const resetDialogState = () => {
+    setShowErrors(false);
+    setFieldErrors(emptyFieldErrors());
+    setDialogError(null);
+  };
 
   const loadTickets = async () => {
     if (!testId) return;
@@ -70,7 +166,6 @@ export default function EditorTestPage() {
         setSelectedTicketId(firstId);
         await loadTicketQuestions(firstId);
       } else {
-        // Билетов нет — показываем общий пул вопросов
         try {
           const all = await invoke<QuestionDetail[]>("get_test_questions", { testId: parseInt(testId) });
           setQuestions(all);
@@ -149,22 +244,28 @@ export default function EditorTestPage() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.text.trim()) { setError("Текст вопроса не может быть пустым"); return; }
-    if (formData.answers.length < 2) { setError("Нужно минимум 2 варианта ответа"); return; }
-    if (!formData.answers.some((a) => a.isCorrect)) { setError("Нужно отметить хотя бы один правильный ответ"); return; }
-    if (!formData.answers.every((a) => a.text.trim())) { setError("Все варианты ответа должны быть заполнены"); return; }
-    if (!selectedTicketId) { setError("Сначала создайте билет"); return; }
+    const errs = validate(formData);
+    setShowErrors(true);
+    setFieldErrors(errs);
+    if (countErrors(errs) > 0) {
+      scrollToFirstError();
+      return;
+    }
 
     const validDifficulty = Math.max(1, Math.min(3, formData.difficulty));
     setSubmitting(true);
+    setDialogError(null);
+
     try {
       if (editingQuestion) {
         const payload: UpdateQuestionPayload = {
           questionId: editingQuestion.id,
           text: formData.text,
           imagePath: formData.imagePath,
-          imageWidth: formData.imageWidth,
-          imageHeight: formData.imageHeight,
+          imageSize:
+            formData.imageWidth && formData.imageHeight
+              ? { width: formData.imageWidth, height: formData.imageHeight }
+              : undefined,
           explanation: formData.explanation || null,
           difficulty: validDifficulty,
           answers: formData.answers,
@@ -175,8 +276,10 @@ export default function EditorTestPage() {
           testId: parseInt(testId!),
           text: formData.text,
           imagePath: formData.imagePath,
-          imageWidth: formData.imageWidth,
-          imageHeight: formData.imageHeight,
+          imageSize:
+            formData.imageWidth && formData.imageHeight
+              ? { width: formData.imageWidth, height: formData.imageHeight }
+              : undefined,
           explanation: formData.explanation || null,
           difficulty: validDifficulty,
           answers: formData.answers,
@@ -188,10 +291,11 @@ export default function EditorTestPage() {
         });
       }
       setIsDialogOpen(false);
+      resetDialogState();
       await loadTicketQuestions(selectedTicketId!);
       await loadTickets();
     } catch (e) {
-      setError(String(e));
+      setDialogError(String(e));
     } finally {
       setSubmitting(false);
     }
@@ -202,8 +306,8 @@ export default function EditorTestPage() {
     setFormData({
       text: question.text,
       imagePath: question.imagePath,
-      imageWidth: question.imageWidth ?? null,
-      imageHeight: question.imageHeight ?? null,
+      imageWidth: question.imageSize?.width ?? null,
+      imageHeight: question.imageSize?.height ?? null,
       explanation: question.explanation || "",
       difficulty: Math.max(1, Math.min(3, question.difficulty || 1)),
       answers: question.answers.map((a) => ({
@@ -211,10 +315,10 @@ export default function EditorTestPage() {
         text: a.text,
         isCorrect: a.isCorrect,
         imagePath: a.imagePath ?? null,
-        imageWidth: a.imageWidth ?? null,
-        imageHeight: a.imageHeight ?? null,
+        imageSize: a.imageSize,
       })),
     });
+    resetDialogState();
     setIsDialogOpen(true);
   };
 
@@ -245,15 +349,22 @@ export default function EditorTestPage() {
     }
   };
 
-  // ✅ Функциональное обновление — фикс бага «картинка исчезает после загрузки»
-  const handleAnswerChange = (
+  // Мержим размер против ПОСЛЕДНЕГО стейта, а не против замыкания
+  const handleAnswerSizeChange = (
     index: number,
-    field: keyof AnswerPayload,
-    value: string | boolean | number | null
+    patch: { width?: number | null; height?: number | null }
   ) => {
     setFormData((prev) => {
       const newAnswers = [...prev.answers];
-      newAnswers[index] = { ...newAnswers[index], [field]: value } as AnswerPayload;
+      const cur = newAnswers[index];
+      newAnswers[index] = {
+        ...cur,
+        imageSize: {
+          width: cur.imageSize?.width ?? null,
+          height: cur.imageSize?.height ?? null,
+          ...patch,
+        },
+      };
       return { ...prev, answers: newAnswers };
     });
   };
@@ -264,7 +375,7 @@ export default function EditorTestPage() {
         ...prev,
         answers: [
           ...prev.answers,
-          { text: "", isCorrect: false, imagePath: null, imageWidth: null, imageHeight: null },
+          { text: "", isCorrect: false, imagePath: null, imageSize: undefined },
         ],
       }));
     }
@@ -279,6 +390,18 @@ export default function EditorTestPage() {
     }
   };
 
+  const handleAnswerChange = (
+    index: number,
+    field: "text" | "isCorrect" | "imagePath",
+    value: string | boolean | null
+  ) => {
+    setFormData((prev) => {
+      const newAnswers = [...prev.answers];
+      newAnswers[index] = { ...newAnswers[index], [field]: value } as AnswerPayload;
+      return { ...prev, answers: newAnswers };
+    });
+  };
+
   const handleCreate = () => {
     setEditingQuestion(null);
     setFormData({
@@ -289,13 +412,14 @@ export default function EditorTestPage() {
       explanation: "",
       difficulty: 1,
       answers: [
-        { text: "", isCorrect: true, imagePath: null, imageWidth: null, imageHeight: null },
-        { text: "", isCorrect: false, imagePath: null, imageWidth: null, imageHeight: null },
-        { text: "", isCorrect: false, imagePath: null, imageWidth: null, imageHeight: null },
-        { text: "", isCorrect: false, imagePath: null, imageWidth: null, imageHeight: null },
-        { text: "", isCorrect: false, imagePath: null, imageWidth: null, imageHeight: null },
+        { text: "", isCorrect: true, imagePath: null, imageSize: undefined },
+        { text: "", isCorrect: false, imagePath: null, imageSize: undefined },
+        { text: "", isCorrect: false, imagePath: null, imageSize: undefined },
+        { text: "", isCorrect: false, imagePath: null, imageSize: undefined },
+        { text: "", isCorrect: false, imagePath: null, imageSize: undefined },
       ],
     });
+    resetDialogState();
     setIsDialogOpen(true);
   };
 
@@ -307,8 +431,36 @@ export default function EditorTestPage() {
     );
   }
 
+  const errorCount = countErrors(fieldErrors);
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 relative">
+      {toast && (
+        <div
+          className={cn(
+            "fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 rounded-lg border px-4 py-3 shadow-xl animate-in fade-in slide-in-from-top-4 duration-300",
+            toast.type === "error"
+              ? "bg-destructive text-destructive-foreground border-destructive"
+              : "bg-green-600 text-white border-green-600"
+          )}
+        >
+          {toast.type === "error" ? (
+            <AlertCircle className="h-5 w-5 shrink-0" />
+          ) : (
+            <CheckCircle2 className="h-5 w-5 shrink-0" />
+          )}
+          <span className="font-medium text-sm">{toast.message}</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-inherit hover:bg-white/20"
+            onClick={() => setToast(null)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       {/* Заголовок */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -361,10 +513,12 @@ export default function EditorTestPage() {
               >
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
-                      isActive ? "bg-primary text-primary-foreground" : "bg-muted"
-                    )}>
+                    <div
+                      className={cn(
+                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
+                        isActive ? "bg-primary text-primary-foreground" : "bg-muted"
+                      )}
+                    >
                       {isActive ? <Folder className="h-5 w-5" /> : <FolderOpen className="h-5 w-5" />}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -500,7 +654,13 @@ export default function EditorTestPage() {
       )}
 
       {/* Диалог создания/редактирования вопроса */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) resetDialogState();
+        }}
+      >
         <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -514,6 +674,18 @@ export default function EditorTestPage() {
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* Ошибка билета — в самом верху формы */}
+            {fieldErrors.ticket && (
+              <div
+                role="alert"
+                data-field-error
+                className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-200"
+              >
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{fieldErrors.ticket}</span>
+              </div>
+            )}
+
             <ImageUpload
               value={formData.imagePath}
               width={formData.imageWidth}
@@ -524,20 +696,30 @@ export default function EditorTestPage() {
               label="Картинка вопроса"
             />
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Текст вопроса *</label>
+            <div className="space-y-1.5">
+              <label htmlFor="q-text" className="text-sm font-medium">
+                Текст вопроса{" "}
+                <span className="text-xs font-normal text-muted-foreground">
+                  {t("editorTest.fields.textOrImageHint")}
+                </span>
+              </label>
               <Textarea
+                id="q-text"
                 value={formData.text}
                 onChange={(e) => setFormData((prev) => ({ ...prev, text: e.target.value }))}
-                placeholder="Введите текст вопроса"
+                placeholder={t("editorTest.fields.textPlaceholderMedia")}
                 rows={3}
+                aria-invalid={!!fieldErrors.text}
+                aria-describedby={fieldErrors.text ? "err-q-text" : undefined}
                 className="w-full break-words"
               />
+              <FieldError id="err-q-text" message={fieldErrors.text} />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Пояснение (необязательно)</label>
+            <div className="space-y-1.5">
+              <label htmlFor="q-expl" className="text-sm font-medium">Пояснение (необязательно)</label>
               <Textarea
+                id="q-expl"
                 value={formData.explanation}
                 onChange={(e) => setFormData((prev) => ({ ...prev, explanation: e.target.value }))}
                 placeholder="Пояснение будет показано после ответа"
@@ -546,13 +728,13 @@ export default function EditorTestPage() {
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-sm font-medium">Сложность</label>
               <Select
                 value={formData.difficulty.toString()}
                 onValueChange={(v: string) => setFormData((prev) => ({ ...prev, difficulty: parseInt(v) }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Выберите сложность" />
                 </SelectTrigger>
                 <SelectContent>
@@ -567,20 +749,38 @@ export default function EditorTestPage() {
               <label className="text-sm font-medium">
                 Варианты ответов * (минимум 2, максимум 6)
               </label>
+              <FieldError id="err-answers-count" message={fieldErrors.answers} />
+              <FieldError id="err-answers-correct" message={fieldErrors.correct} />
+
               <div className="space-y-2">
                 {formData.answers.map((answer, index) => (
-                  <div key={index} className="space-y-2 p-3 border border-border rounded-lg">
+                  <div
+                    key={index}
+                    className={cn(
+                      "space-y-2 p-3 border rounded-lg transition-colors",
+                      fieldErrors.answerTexts[index]
+                        ? "border-destructive/60 bg-destructive/5"
+                        : "border-border"
+                    )}
+                  >
                     <div className="flex items-center gap-2">
                       <Checkbox
                         checked={answer.isCorrect}
                         onCheckedChange={(checked) =>
                           handleAnswerChange(index, "isCorrect", checked === true)
                         }
+                        aria-label={`Правильный ответ: вариант ${String.fromCharCode(65 + index)}`}
                       />
                       <Input
                         value={answer.text}
                         onChange={(e) => handleAnswerChange(index, "text", e.target.value)}
-                        placeholder={`Вариант ${String.fromCharCode(65 + index)}`}
+                        placeholder={t("editorTest.fields.answerPlaceholderMedia", {
+                          letter: String.fromCharCode(65 + index),
+                        })}
+                        aria-invalid={!!fieldErrors.answerTexts[index]}
+                        aria-describedby={
+                          fieldErrors.answerTexts[index] ? `err-answer-${index}` : undefined
+                        }
                         className="flex-1"
                       />
                       {formData.answers.length > 2 && (
@@ -594,13 +794,14 @@ export default function EditorTestPage() {
                         </Button>
                       )}
                     </div>
+                    <FieldError id={`err-answer-${index}`} message={fieldErrors.answerTexts[index]} />
                     <ImageUpload
                       value={answer.imagePath}
-                      width={answer.imageWidth}
-                      height={answer.imageHeight}
+                      width={answer.imageSize?.width ?? null}
+                      height={answer.imageSize?.height ?? null}
                       onChangePath={(path) => handleAnswerChange(index, "imagePath", path)}
-                      onChangeWidth={(w) => handleAnswerChange(index, "imageWidth", w)}
-                      onChangeHeight={(h) => handleAnswerChange(index, "imageHeight", h)}
+                      onChangeWidth={(w) => handleAnswerSizeChange(index, { width: w })}
+                      onChangeHeight={(h) => handleAnswerSizeChange(index, { height: h })}
                       label={`Картинка варианта ${String.fromCharCode(65 + index)}`}
                     />
                   </div>
@@ -617,7 +818,20 @@ export default function EditorTestPage() {
             <QuestionPreview formData={formData} uploadsDir={uploadsDir} />
           </div>
 
+          {dialogError && (
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span className="break-all">{dialogError}</span>
+            </div>
+          )}
+
           <DialogFooter>
+            {showErrors && errorCount > 0 && (
+              <p aria-live="polite" className="mr-auto flex items-center gap-1.5 text-xs font-medium text-destructive">
+                <AlertCircle className="h-3.5 w-3.5" />
+                {t("editorTest.errors.summary", { count: errorCount })}
+              </p>
+            )}
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={submitting}>
               Отмена
             </Button>
@@ -697,7 +911,11 @@ function QuestionPreview({
           }
         />
       )}
-      <p className="font-medium break-words">{formData.text || "Текст вопроса…"}</p>
+      {formData.text ? (
+        <p className="font-medium break-words">{formData.text}</p>
+      ) : !formData.imagePath ? (
+        <p className="font-medium break-words text-muted-foreground italic">Текст вопроса…</p>
+      ) : null}
       <div className="space-y-1.5">
         {formData.answers.map((a, i) => {
           const aUrl = getAssetUrl(a.imagePath, uploadsDir);
@@ -713,15 +931,21 @@ function QuestionPreview({
                 {String.fromCharCode(65 + i)}
               </span>
               <div className="flex-1 min-w-0">
-                <span className="break-words">{a.text || `Вариант ${String.fromCharCode(65 + i)}`}</span>
+                {a.text ? (
+                  <span className="break-words">{a.text}</span>
+                ) : !a.imagePath ? (
+                  <span className="break-words text-muted-foreground italic">
+                    Вариант {String.fromCharCode(65 + i)}…
+                  </span>
+                ) : null}
                 {aUrl && (
                   <img
                     src={aUrl}
                     alt=""
                     className="mt-1 rounded border border-border object-contain"
                     style={
-                      a.imageWidth && a.imageHeight
-                        ? { width: a.imageWidth, height: a.imageHeight, maxWidth: "100%" }
+                      a.imageSize?.width && a.imageSize?.height
+                        ? { width: a.imageSize.width, height: a.imageSize.height, maxWidth: "100%" }
                         : { maxWidth: "100%" }
                     }
                   />
